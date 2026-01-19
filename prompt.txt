@@ -1,0 +1,160 @@
+You are Claude Opus 4.5.
+
+MISSION
+Generate a complete, runnable full-stack application repo from scratch: “DriftMirror”.
+Output ONLY the code files (and ONE minimal README). Do NOT output extra explanations, long documentation, diagrams, or markdown beyond the README.
+
+CRITICAL CONSTRAINTS
+- Do NOT over-engineer. Build the simplest stable architecture that satisfies the features.
+- Output ONLY what is necessary. No unused abstractions, no extra layers, no placeholder frameworks.
+- Keep context small: avoid large commentary. Prefer compact, essential code.
+- The app must run locally end-to-end.
+
+STACK (FIXED)
+Backend:
+- FastAPI (async) + SQLite
+- SQLAlchemy + Pydantic
+Frontend:
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- Framer Motion (only where needed for UI polish)
+LLM:
+- Ollama local HTTP API using Qwen (already installed)
+- Must work even if Ollama is down via deterministic fallback
+
+ENV VARS
+- OLLAMA_BASE_URL=http://localhost:11434
+- OLLAMA_MODEL=deepseek-r1:1.5b (user can change)
+- OLLAMA_TIMEOUT_SECONDS=20
+
+HACKATHON JUDGING CRITERIA (OPTIMIZE)
+1) Functionality: stable core features, predictable behavior, demo-proof
+2) Real-world relevance: practical for real New Year goals
+3) LLM/agents: use LLM for language reasoning only; autonomy via deterministic code
+4) Evaluation/observability: debug panel + metrics + “why” explanations + optional user feedback
+5) Goal alignment: supports growth; makes starting feel rewarding; non-judgmental tone
+
+PRODUCT PHILOSOPHY (MUST BE IN UI COPY)
+“Start before you think about the value. Value comes after you start. Don’t wait.”
+
+FEATURES (MUST IMPLEMENT)
+A) Minimal Plan Setup (≤30 seconds)
+- Goal title, optional why
+- Mode: Personal Growth vs Productivity (copy-only)
+- Frequency/week (1–7)
+- Minimum minutes (1–60)
+- Preferred time window: morning/afternoon/evening/night
+Persist resolution + plan version=1.
+
+B) Daily Micro Check-in (≤15 seconds)
+- planned (short text)
+- actual (short text)
+- blocker (optional)
+- completed toggle (yes/no)
+- friction slider (1–3)
+On submit:
+- store checkin
+- extract signals (LLM or fallback stub)
+- compute drift deterministically using last N=3 checkins
+- if drift triggers: create mirror report (LLM or fallback) and create new plan version deterministically
+Return dashboard payload.
+
+C) Mirror (first-order + second-order) + Evidence
+- max 3 findings
+- evidence snippets expandable
+- neutral tone
+
+D) Counterfactual Reflection
+- “based on / likely” phrasing
+- quantifies what was within reach
+
+E) Autonomous Plan Adaptation (CODE-controlled)
+- deterministic rules (simple)
+- create plan version with small changes + recovery step
+- show before/after diff
+
+F) Evaluation & Observability
+- dashboard metrics: completion rate, streak, avg friction, drift score
+- debug drawer (tabs): Signals / Rules / JSON
+- optional thumbs up/down feedback on mirror report
+
+G) Demo-proof button
+- “Load Demo Data” seeds 1 resolution + plan + 3 checkins so mirror triggers instantly
+
+LLM / AGENTS (MINIMAL, STRICT JSON)
+Conceptually 2 agents (implemented as two LLM calls with strict schemas):
+1) SignalExtractorAgent: checkin → signals JSON
+2) MirrorComposerAgent: last N signals + plan + drift context → mirror JSON (includes counterfactual)
+LLM cannot decide state transitions or plan mutations. Code controls those.
+
+OUTPUT FORMAT (STRICT — CODE ONLY)
+- Provide a single minimal README.md
+- Then output all code files only.
+- For each file:
+  - Print: FILE: <path>
+  - Then the full file content in a fenced code block.
+- Do NOT include any additional commentary outside file blocks.
+
+REPO LAYOUT (MINIMAL)
+root/
+  README.md
+  .env.example
+  backend/
+    app/
+      main.py
+      db.py
+      models.py
+      schemas.py
+      services/
+        drift.py
+        plan_adjuster.py
+        llm_client.py
+        prompts.py
+        stubs.py
+      routes/
+        resolutions.py
+        checkins.py
+        dashboard.py
+        demo.py
+    requirements.txt
+  frontend/
+    package.json
+    next.config.js (if needed)
+    tailwind.config.ts
+    postcss.config.js
+    tsconfig.json
+    app/
+      layout.tsx
+      page.tsx
+      onboarding/page.tsx
+      checkin/page.tsx
+      dashboard/page.tsx
+      mirror/page.tsx
+      globals.css
+    components/
+      ui/
+        Button.tsx
+        Card.tsx
+        Input.tsx
+        Slider.tsx
+        Toggle.tsx
+        Tabs.tsx
+      DebugDrawer.tsx
+      PlanDiff.tsx
+      Timeline.tsx
+      Icons.tsx
+      MetricPills.tsx
+    lib/
+      api.ts
+      storage.ts
+
+MINIMIZE DEPENDENCIES
+- Backend: fastapi, uvicorn, sqlalchemy, pydantic, httpx, python-dotenv
+- Frontend: next, react, tailwind, framer-motion, lucide-react
+No additional libraries unless essential.
+
+NOW GENERATE THE REPO
+Generate ONLY the necessary code that makes this app work and looks polished.
+Do not include unused files or unreferenced code.
+Only output files listed above (you may omit files if truly unnecessary, but keep the structure minimal and runnable).
+Start now.
