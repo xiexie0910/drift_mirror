@@ -21,10 +21,13 @@ export default function Home() {
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
-    api.getDashboard().then((data) => {
-      setHasResolution(!!data.resolution);
-      if (data.resolution) {
+    // Check if user has any goals - if so, go to unified dashboard
+    api.getResolutions().then((resolutions) => {
+      if (resolutions.length > 0) {
+        setHasResolution(true);
         router.push('/dashboard');
+      } else {
+        setHasResolution(false);
       }
     }).catch(() => setHasResolution(false));
   }, [router]);

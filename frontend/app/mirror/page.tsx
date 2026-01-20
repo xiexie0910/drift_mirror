@@ -9,23 +9,34 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { ChevronDown, ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Eye } from 'lucide-react';
 import { api, Dashboard } from '@/lib/api';
 
 export default function MirrorPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const goalId = searchParams.get('goal');
+  
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [expandedFindings, setExpandedFindings] = useState<number[]>([]);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
   const [feedbackError, setFeedbackError] = useState(false);
 
   useEffect(() => {
-    api.getDashboard()
+    const loadDashboard = goalId 
+      ? api.getDashboardForResolution(Number(goalId))
+      : api.getDashboard();
+      
+    loadDashboard
       .then(setDashboard)
-      .catch(() => router.push('/'));
-  }, [router]);
+      .catch(() => router.push('/dashboard'));
+  }, [router, goalId]);
+
+  const goBack = () => {
+    router.push(goalId ? `/dashboard/${goalId}` : '/dashboard');
+  };
 
   const handleFeedback = async (helpful: boolean) => {
     if (!dashboard?.latest_mirror) return;
@@ -52,9 +63,9 @@ export default function MirrorPage() {
         <div className="max-w-lg mx-auto px-4 py-8 space-y-8 animate-fade-in-up">
           <header className="flex items-center gap-4">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={goBack}
               className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
-              aria-label="Back to dashboard"
+              aria-label="Back to goal"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -80,11 +91,11 @@ export default function MirrorPage() {
               once it observes patterns.
             </p>
             <Button 
-              onClick={() => router.push('/dashboard')} 
+              onClick={goBack} 
               variant="glass"
               className="mt-8"
             >
-              Back to Dashboard
+              Back to Goal
             </Button>
           </div>
         </div>
@@ -125,9 +136,9 @@ export default function MirrorPage() {
         {/* Header */}
         <header className="flex items-center gap-4 animate-fade-in-up">
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={goBack}
             className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
-            aria-label="Back to dashboard"
+            aria-label="Back to goal"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -267,11 +278,11 @@ export default function MirrorPage() {
 
         {/* Back action */}
         <Button
-          onClick={() => router.push('/dashboard')}
+          onClick={goBack}
           variant="secondary"
           className="w-full"
         >
-          Back to Dashboard
+          Back to Goal
         </Button>
       </div>
     </div>

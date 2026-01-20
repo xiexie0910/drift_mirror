@@ -82,7 +82,7 @@ async def get_dashboard(db: Session = Depends(get_db)):
         drift_triggered=drift_score > 0.4 and total >= 3
     )
 
-@router.get("/{resolution_id}", response_model=DashboardResponse)
+@router.get("/{resolution_id}/", response_model=DashboardResponse)
 async def get_dashboard_for_resolution(resolution_id: int, db: Session = Depends(get_db)):
     resolution = db.query(Resolution).filter(Resolution.id == resolution_id).first()
     if not resolution:
@@ -134,7 +134,7 @@ async def get_dashboard_for_resolution(resolution_id: int, db: Session = Depends
         drift_triggered=drift_score > 0.4 and total >= 3
     )
 
-@router.post("/feedback")
+@router.post("/feedback/")
 async def submit_feedback(data: FeedbackCreate, db: Session = Depends(get_db)):
     feedback = Feedback(
         mirror_report_id=data.mirror_report_id,

@@ -5,11 +5,11 @@ from datetime import datetime
 # Resolution
 class ResolutionCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    why: Optional[str] = None
-    mode: str = Field(default="personal_growth")
+    why: Optional[str] = Field(default=None, max_length=500)
+    mode: str = Field(default="personal_growth", max_length=50)
     frequency_per_week: int = Field(default=3, ge=1, le=7)
-    min_minutes: int = Field(default=15, ge=1, le=60)
-    time_window: str = Field(default="morning")
+    min_minutes: int = Field(default=15, ge=1, le=120)
+    time_window: str = Field(default="morning", max_length=50)
 
 class ResolutionResponse(BaseModel):
     id: int
@@ -39,10 +39,10 @@ class PlanResponse(BaseModel):
 
 # Checkin
 class CheckinCreate(BaseModel):
-    resolution_id: int
-    planned: str = Field(..., min_length=1)
-    actual: str = Field(..., min_length=1)
-    blocker: Optional[str] = None
+    resolution_id: int = Field(..., gt=0)
+    planned: str = Field(..., min_length=1, max_length=500)
+    actual: str = Field(..., min_length=1, max_length=500)
+    blocker: Optional[str] = Field(default=None, max_length=500)
     completed: bool = False
     friction: int = Field(default=2, ge=1, le=3)
 

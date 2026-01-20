@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
@@ -20,6 +20,9 @@ import { sanitizeText, validateCheckinForm, INPUT_LIMITS } from '@/lib/validatio
 
 export default function CheckinPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const goalId = searchParams.get('goal');
+  
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +35,16 @@ export default function CheckinPage() {
   });
 
   useEffect(() => {
-    api.getDashboard()
+    // If goal ID is provided, load that specific goal's dashboard
+    // Otherwise, fall back to latest resolution
+    const loadDashboard = goalId 
+      ? api.getDashboardForResolution(Number(goalId))
+      : api.getDashboard();
+      
+    loadDashboard
       .then(setDashboard)
-      .catch(() => router.push('/'));
-  }, [router]);
+      .catch(() => router.push('/dashboard'));
+  }, [router, goalId]);
 
   // Sanitize input on change
   const handleInputChange = useCallback((field: 'planned' | 'actual' | 'blocker', value: string) => {
@@ -75,7 +84,9 @@ export default function CheckinPage() {
         completed: form.completed,
         friction: form.friction,
       });
-      router.push('/dashboard');
+      // Navigate back to goal detail if we have a goal ID, otherwise dashboard
+      const returnPath = goalId ? `/dashboard/${goalId}` : '/dashboard';
+      router.push(returnPath);
     } catch (err) {
       // Show user-friendly error, don't expose internals
       if (err instanceof ApiError) {
@@ -111,9 +122,9 @@ export default function CheckinPage() {
         {/* Header with back navigation */}
         <header className="flex items-center gap-4 animate-fade-in-up">
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(goalId ? `/dashboard/${goalId}` : '/dashboard')}
             className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
-            aria-label="Back to dashboard"
+            aria-label="Back to goal"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>

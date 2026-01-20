@@ -32,8 +32,9 @@ async def call_ollama(prompt: str, system: str = "") -> Optional[str]:
             if response.status_code == 200:
                 data = response.json()
                 return data.get("response", "")
-    except Exception as e:
-        print(f"Ollama error: {e}")
+    except Exception:
+        # Silent fail - caller will use fallback
+        pass
     return None
 
 def extract_json_from_response(text: str) -> Optional[dict]:

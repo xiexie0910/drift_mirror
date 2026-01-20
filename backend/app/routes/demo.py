@@ -1,14 +1,24 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+import os
 from app.db import get_db
 from app.models import Resolution, Plan, Checkin, Signal, MirrorReport
 
 router = APIRouter()
 
+# Demo routes only enabled in development
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
+
+def check_demo_enabled():
+    """Disable demo routes in production."""
+    if IS_PRODUCTION:
+        raise HTTPException(status_code=404, detail="Not found")
+
 @router.post("/seed")
 async def seed_demo_data(db: Session = Depends(get_db)):
     """Seed demo data to trigger mirror report instantly."""
+    check_demo_enabled()
     
     # Clear existing data
     db.query(Signal).delete()
@@ -165,6 +175,7 @@ async def seed_demo_data(db: Session = Depends(get_db)):
 @router.delete("/clear")
 async def clear_demo_data(db: Session = Depends(get_db)):
     """Clear all demo data."""
+    check_demo_enabled()
     db.query(Signal).delete()
     db.query(Checkin).delete()
     db.query(MirrorReport).delete()

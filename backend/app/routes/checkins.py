@@ -183,7 +183,7 @@ async def compose_mirror(resolution: Resolution, signals: List[Signal], drift_sc
         drift_score
     )
 
-@router.get("/{resolution_id}", response_model=List[CheckinResponse])
+@router.get("/{resolution_id}/", response_model=List[CheckinResponse])
 async def get_checkins(resolution_id: int, db: Session = Depends(get_db)):
     return db.query(Checkin).filter(
         Checkin.resolution_id == resolution_id
