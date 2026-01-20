@@ -1,11 +1,21 @@
 import { Card } from './ui/Card';
 import { ArrowRight } from 'lucide-react';
 
+/**
+ * PlanDiff Component
+ * 
+ * Design Philosophy:
+ * - Glass surface because this represents system insight/adaptation
+ * - Neutral language - system observation, not judgment
+ * - Clear before/after comparison
+ * - Recovery step is a suggestion, not a command
+ */
+
 interface Plan {
   frequency_per_week: number;
   min_minutes: number;
   time_window: string;
-  recovery_step?: string;
+  recovery_step?: string | null;
 }
 
 interface PlanDiffProps {
@@ -43,21 +53,26 @@ export function PlanDiff({ oldPlan, newPlan }: PlanDiffProps) {
   if (changes.length === 0) return null;
 
   return (
-    <Card className="p-4 border-drift-200 bg-drift-50">
-      <h3 className="text-sm font-medium text-drift-700 mb-3">Plan Adjusted</h3>
-      <div className="space-y-2">
+    // Glass surface - this is a system observation/adaptation
+    <Card variant="glass" className="p-5">
+      <h3 className="text-sm font-medium text-neutral-600 mb-4">
+        Plan Adjusted
+      </h3>
+      
+      <div className="space-y-3">
         {changes.map((change, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm">
-            <span className="text-gray-500 w-20">{change.label}:</span>
-            <span className="text-red-500 line-through">{change.old}</span>
-            <ArrowRight className="w-4 h-4 text-gray-400" />
-            <span className="text-drift-700 font-medium">{change.new}</span>
+          <div key={i} className="flex items-center gap-3 text-sm">
+            <span className="text-neutral-500 w-20">{change.label}</span>
+            <span className="text-neutral-400 line-through">{change.old}</span>
+            <ArrowRight className="w-4 h-4 text-neutral-300" />
+            <span className="text-teal-600 font-medium">{change.new}</span>
           </div>
         ))}
       </div>
+      
       {newPlan.recovery_step && (
-        <p className="text-sm text-drift-600 mt-3 pt-3 border-t border-drift-200">
-          💡 {newPlan.recovery_step}
+        <p className="text-sm text-neutral-600 mt-4 pt-4 border-t border-neutral-200/50">
+          <span className="text-teal-600">Suggested approach:</span> {newPlan.recovery_step}
         </p>
       )}
     </Card>

@@ -1,5 +1,16 @@
 import type { Config } from 'tailwindcss';
 
+/**
+ * DriftMirror Tailwind Configuration
+ * ============================================================
+ * 
+ * Design Philosophy: Calm Futurism
+ * - Subtle depth, not spectacle
+ * - Material-based surfaces
+ * - Precision and restraint
+ * - Teal as the sole accent color (used sparingly)
+ */
+
 const config: Config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,61 +19,89 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        drift: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+        // Primary accent: TEAL (used with restraint)
+        teal: {
+          50: '#F0FDFA',
+          100: '#CCFBF1',
+          200: '#99F6E4',
+          300: '#5EEAD4',
+          400: '#2DD4BF',
+          500: '#14B8A6',
+          600: '#0D9488',
+          700: '#0F766E',
+          800: '#115E59',
+          900: '#134E4A',
         },
-        lilac: {
-          50: '#faf5ff',
-          100: '#f3e8ff',
-          200: '#e9d5ff',
-          300: '#d8b4fe',
-          400: '#c084fc',
-          500: '#a855f7',
-          600: '#9333ea',
-          700: '#7e22ce',
-          800: '#6b21a8',
-          900: '#581c87',
-        },
-        calm: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
+        // Neutral palette
+        neutral: {
+          50: '#FAFAFA',
+          100: '#F5F5F5',
+          200: '#E5E5E5',
+          300: '#D4D4D4',
+          400: '#A3A3A3',
           500: '#737373',
           600: '#525252',
           700: '#404040',
           800: '#262626',
           900: '#171717',
         },
+        // Semantic states (muted, not celebratory)
+        state: {
+          complete: '#6EE7B7',
+          'complete-bg': '#ECFDF5',
+          attention: '#FCD34D',
+          'attention-bg': '#FFFBEB',
+          concern: '#FDA4AF',
+          'concern-bg': '#FFF1F2',
+        },
+      },
+      fontFamily: {
+        // Clean, neutral sans-serif
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['SF Mono', 'Monaco', 'Cascadia Mono', 'monospace'],
       },
       boxShadow: {
-        'bubble': '0 8px 32px -8px rgba(168, 85, 247, 0.15), 0 4px 16px -4px rgba(168, 85, 247, 0.1)',
-        'bubble-hover': '0 12px 40px -8px rgba(168, 85, 247, 0.2), 0 6px 20px -4px rgba(168, 85, 247, 0.15)',
-        'bubble-inset': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 4px 0 rgba(168, 85, 247, 0.05)',
+        // Soft, physical, stable shadows
+        'surface': '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+        'surface-md': '0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.04)',
+        'surface-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
+        'surface-xl': '0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+        // Glass shadows with subtle teal tint
+        'glass': '0 4px 16px 0 rgba(20, 184, 166, 0.04), 0 2px 8px 0 rgba(0, 0, 0, 0.02)',
+        'glass-strong': '0 8px 24px 0 rgba(20, 184, 166, 0.06), 0 4px 12px 0 rgba(0, 0, 0, 0.03)',
+      },
+      backdropBlur: {
+        'glass-subtle': '12px',
+        'glass-strong': '16px',
+        'glass-quiet': '8px',
+      },
+      borderRadius: {
+        'surface': '0.75rem',
+        'surface-lg': '1rem',
+        'surface-xl': '1.25rem',
       },
       animation: {
-        'float-up': 'floatUp 0.4s ease-out',
-        'fade-in': 'fadeIn 0.3s ease-out',
+        // Calm, predictable animations only
+        'fade-in': 'fadeIn 0.2s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
       },
       keyframes: {
-        floatUp: {
-          '0%': { opacity: '0', transform: 'translateY(10px) scale(0.98)' },
-          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
-        },
         fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.98)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+      },
+      transitionDuration: {
+        'fast': '150ms',
+        'normal': '200ms',
+        'slow': '300ms',
+      },
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
     },
   },

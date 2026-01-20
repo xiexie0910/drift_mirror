@@ -1,24 +1,24 @@
 'use client';
 
+/**
+ * DriftMirror Home Page
+ * ============================================================
+ * 
+ * Design: Calm Futurism with Glass Materials
+ * - Premium glass card
+ * - Subtle animations
+ * - Ambient depth
+ */
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
-import { 
-  AnimatedBackground, 
-  FloatingParticles, 
-  FloatingShapes,
-  AnimatedDecorations,
-  PageTransition,
-  FloatingImage 
-} from '@/components/animations/AnimatedBackground';
 
 export default function Home() {
   const router = useRouter();
   const [hasResolution, setHasResolution] = useState<boolean | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     api.getDashboard().then((data) => {
@@ -29,168 +29,118 @@ export default function Home() {
     }).catch(() => setHasResolution(false));
   }, [router]);
 
+  // Loading state - elegant glass loader
   if (hasResolution === null) {
     return (
-      <div className="min-h-screen relative">
-        <AnimatedBackground theme="home" />
-        <FloatingParticles count={20} />
-        <div className="flex items-center justify-center min-h-screen">
-          <motion.div 
-            className="text-lilac-500 text-xl font-medium"
-            animate={{ opacity: [0.5, 1, 0.5], scale: [0.98, 1.02, 0.98] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            ✨ Loading...
-          </motion.div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass-subtle p-8 rounded-2xl animate-pulse-soft">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+            <p className="text-neutral-500 text-sm">Loading...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground theme="home" />
-      <FloatingParticles count={30} />
-      <FloatingShapes />
-      <AnimatedDecorations />
-      
-      {/* Floating target image */}
-      <FloatingImage 
-        src="/images/target.svg" 
-        alt="Target illustration" 
-        size={180} 
-        position="top-right"
-        delay={0.5}
-      />
-      
-      {/* Decorative floating illustration - bottom left */}
-      <motion.div
-        className="fixed bottom-20 left-10 w-32 h-32 pointer-events-none z-5"
-        initial={{ opacity: 0, scale: 0.5, x: -50 }}
-        animate={{ opacity: 0.7, scale: 1, x: 0 }}
-        transition={{ delay: 0.8, duration: 0.8, type: 'spring' }}
-      >
-        <motion.div
-          animate={{ y: [10, -10, 10], rotate: [5, -5, 5] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="max-w-lg w-full space-y-8">
+        {/* Decorative teal line top */}
+        <div className="teal-line w-32 mx-auto rounded-full" />
+        
+        {/* Header with subtle animation */}
+        <div 
+          className="text-center space-y-4 animate-fade-in-up"
+          style={{ animationDelay: '0.1s' }}
         >
-          <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-xl">
-            <defs>
-              <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#22c55e" />
-                <stop offset="100%" stopColor="#3b82f6" />
-              </linearGradient>
-            </defs>
-            <path d="M100 20 L180 100 L100 180 L20 100 Z" fill="url(#gradient2)" opacity="0.4" />
-            <text x="100" y="115" textAnchor="middle" fontSize="50" fill="white">✨</text>
-          </svg>
-        </motion.div>
-      </motion.div>
-      
-      <PageTransition className="relative z-10 py-12 px-4">
-        <div className="max-w-2xl mx-auto space-y-8">
-          <motion.div 
-            className="text-center space-y-4"
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 100 }}
-          >
-            <motion.div 
-              className="flex items-center justify-center gap-3"
-              animate={{ scale: [1, 1.02, 1] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <motion.div
-                animate={{ rotate: [0, 15, -15, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <Sparkles className="w-10 h-10 text-lilac-500 drop-shadow-lg" />
-              </motion.div>
-              <h1 className="text-5xl font-display font-bold text-gradient-shine text-shadow-glow tracking-tight">
-                DriftMirror
-              </h1>
-            </motion.div>
-            <motion.p 
-              className="text-lg font-body text-calm-600 max-w-md mx-auto font-medium tracking-wide"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              Track your goals. Reflect on your patterns. Adapt without judgment.
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.4, type: 'spring', stiffness: 100 }}
-          >
-            <Card className="p-8 text-center space-y-6 glass-card rounded-2xl">
-              <motion.blockquote 
-                className="text-xl font-display italic text-calm-700 border-l-4 border-lilac-400 pl-4 text-left leading-relaxed"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                "Start before you think about the value. Value comes after you start. Don't wait."
-              </motion.blockquote>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Button 
-                  onClick={() => router.push('/onboarding')} 
-                  size="lg" 
-                  className="gap-2 bg-gradient-to-r from-lilac-500 to-purple-600 hover:from-lilac-600 hover:to-purple-700 shadow-lg shadow-lilac-500/30 text-lg px-8 py-4 font-heading font-semibold tracking-wide"
-                >
-                  Begin Your Journey <ArrowRight className="w-5 h-5" />
-                </Button>
-              </motion.div>
-            </Card>
-          </motion.div>
-
-          <motion.div 
-            className="grid gap-4 text-sm text-calm-600"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-          >
-            {[
-              { num: 1, text: 'Set a simple goal in under 30 seconds', icon: '🎯' },
-              { num: 2, text: 'Quick daily check-ins (15 seconds)', icon: '⚡' },
-              { num: 3, text: 'Get non-judgmental insights when you drift', icon: '🔮' },
-              { num: 4, text: 'Your plan adapts automatically to keep you going', icon: '✨' },
-            ].map((item, i) => (
-              <motion.div 
-                key={item.num}
-                className="flex items-center gap-4 p-4 rounded-2xl glass glass-hover cursor-default"
-                style={{ '--shine-delay': `${i * 0.5}s` } as React.CSSProperties}
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1 + i * 0.1, type: 'spring' }}
-              >
-                <motion.span 
-                  className="text-2xl"
-                  animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, delay: i * 0.3 }}
-                >
-                  {item.icon}
-                </motion.span>
-                <div className="flex items-center gap-2">
-                  <span className="font-heading font-bold text-lilac-600 text-lg">
-                    {item.num}.
-                  </span>
-                  <span className="font-body font-medium text-calm-700">{item.text}</span>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+          {/* Logo mark with strong teal glow */}
+          <div className="flex justify-center mb-6">
+            <div className="glass-strong p-5 rounded-2xl glow-teal-strong relative">
+              <Sparkles className="w-10 h-10 text-teal-600" />
+              {/* Teal ring accent */}
+              <div className="absolute inset-0 rounded-2xl border-2 border-teal-400/30 animate-pulse-soft" />
+            </div>
+          </div>
+          
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-700 via-teal-600 to-teal-500 bg-clip-text text-transparent tracking-tight">
+            DriftMirror
+          </h1>
+          <p className="text-lg text-teal-700/70">
+            A system for observing behavior and adapting plans.
+          </p>
         </div>
-      </PageTransition>
+
+        {/* Primary glass card with teal accent border */}
+        <div 
+          className="glass-strong p-8 space-y-6 animate-fade-in-up relative overflow-hidden"
+          style={{ animationDelay: '0.2s' }}
+        >
+          {/* Decorative teal accent corner */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-teal-400/20 to-transparent rounded-bl-full" />
+          
+          {/* System explanation */}
+          <div className="space-y-4 text-neutral-600 relative z-10">
+            <p className="text-base leading-relaxed">
+              This system helps you track what actually happens, 
+              not what you hope will happen.
+            </p>
+            <p className="text-base leading-relaxed">
+              Start with a goal. The system observes your behavior 
+              and adjusts the plan based on real data.
+            </p>
+          </div>
+          
+          {/* Decorative teal divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
+          
+          {/* Primary CTA */}
+          <button 
+            onClick={() => router.push('/onboarding')} 
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="w-full btn-primary py-4 px-6 rounded-xl font-medium text-base flex items-center justify-center gap-3 group relative overflow-hidden"
+          >
+            {/* Shimmer effect on button */}
+            <div className="absolute inset-0 teal-shimmer" />
+            <span className="relative z-10">Set up your goal</span>
+            <ArrowRight 
+              className={`w-5 h-5 relative z-10 transition-transform duration-300 ${isHovered ? 'translate-x-1' : ''}`} 
+            />
+          </button>
+        </div>
+
+        {/* How it works - glass grid with teal accents */}
+        <div 
+          className="space-y-4 animate-fade-in-up"
+          style={{ animationDelay: '0.3s' }}
+        >
+          <p className="font-medium text-teal-700 text-sm text-center">How it works</p>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { num: '01', text: 'Define a goal and minimum action' },
+              { num: '02', text: 'Log brief check-ins on what happened' },
+              { num: '03', text: 'System identifies patterns and drift' },
+              { num: '04', text: 'Plan adapts based on your behavior' },
+            ].map((step, i) => (
+              <div 
+                key={i} 
+                className="glass-subtle p-4 rounded-xl transition-all duration-300 hover:scale-[1.03] hover:glow-teal-soft group"
+              >
+                <span className="text-teal-500 font-mono text-xs font-bold group-hover:text-teal-600">{step.num}</span>
+                <p className="text-neutral-600 text-sm mt-2">{step.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Bottom decorative element */}
+        <div className="flex justify-center gap-2 pt-4">
+          <div className="w-2 h-2 rounded-full bg-teal-400/50 animate-pulse" />
+          <div className="w-2 h-2 rounded-full bg-teal-500/50 animate-pulse" style={{ animationDelay: '0.2s' }} />
+          <div className="w-2 h-2 rounded-full bg-teal-400/50 animate-pulse" style={{ animationDelay: '0.4s' }} />
+        </div>
+      </div>
     </div>
   );
 }

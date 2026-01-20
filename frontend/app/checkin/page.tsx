@@ -1,28 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * DriftMirror Check-in Page
+ * ============================================================
+ * 
+ * Calm Futurism Design with Glass Materials
+ * Security: Input validation, sanitization, error handling
+ */
+
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
 import { Toggle } from '@/components/ui/Toggle';
-import { ArrowRight, CheckCircle } from 'lucide-react';
-import { api, Dashboard } from '@/lib/api';
-import { 
-  AnimatedBackground, 
-  FloatingParticles, 
-  FloatingShapes,
-  AnimatedDecorations,
-  PageTransition,
-  FloatingImage 
-} from '@/components/animations/AnimatedBackground';
+import { ArrowLeft, PenLine } from 'lucide-react';
+import { api, Dashboard, ApiError } from '@/lib/api';
+import { sanitizeText, validateCheckinForm, INPUT_LIMITS } from '@/lib/validation';
 
 export default function CheckinPage() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     planned: '',
     actual: '',
@@ -32,41 +32,71 @@ export default function CheckinPage() {
   });
 
   useEffect(() => {
-    api.getDashboard().then(setDashboard).catch(() => router.push('/'));
+    api.getDashboard()
+      .then(setDashboard)
+      .catch(() => router.push('/'));
   }, [router]);
+
+  // Sanitize input on change
+  const handleInputChange = useCallback((field: 'planned' | 'actual' | 'blocker', value: string) => {
+    // Only sanitize on submit, allow typing freely
+    setForm(prev => ({ ...prev, [field]: value }));
+    setError(null);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dashboard?.resolution || !form.planned || !form.actual) return;
+    if (!dashboard?.resolution) return;
+
+    // Validate and sanitize
+    const sanitizedForm = {
+      planned: sanitizeText(form.planned),
+      actual: sanitizeText(form.actual),
+      blocker: sanitizeText(form.blocker),
+      friction: form.friction,
+    };
+
+    const validation = validateCheckinForm(sanitizedForm);
+    if (!validation.valid) {
+      const firstError = Object.values(validation.errors)[0];
+      setError(firstError);
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+    
     try {
       await api.createCheckin({
         resolution_id: dashboard.resolution.id,
-        ...form,
-        blocker: form.blocker || undefined,
+        planned: sanitizedForm.planned,
+        actual: sanitizedForm.actual,
+        blocker: sanitizedForm.blocker || undefined,
+        completed: form.completed,
+        friction: form.friction,
       });
       router.push('/dashboard');
     } catch (err) {
-      console.error(err);
+      // Show user-friendly error, don't expose internals
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to save check-in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Loading state
   if (!dashboard?.resolution) {
     return (
-      <div className="min-h-screen relative">
-        <AnimatedBackground theme="checkin" />
-        <FloatingParticles count={15} />
-        <div className="flex items-center justify-center min-h-screen">
-          <motion.div 
-            className="text-yellow-500 text-xl font-medium"
-            animate={{ opacity: [0.5, 1, 0.5], scale: [0.98, 1.02, 0.98] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            ⏱ Loading...
-          </motion.div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass-subtle p-6 rounded-2xl animate-pulse-soft">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+            <p className="text-neutral-500 text-sm">Loading...</p>
+          </div>
         </div>
       </div>
     );
@@ -75,199 +105,150 @@ export default function CheckinPage() {
   const frictionLabels = ['Low', 'Medium', 'High'];
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground theme="checkin" />
-      <FloatingParticles count={25} />
-      <FloatingShapes />
-      <AnimatedDecorations />
-      
-      {/* Floating checklist illustration */}
-      <FloatingImage 
-        src="/images/checklist.svg" 
-        alt="Checklist illustration" 
-        size={150} 
-        position="top-right"
-        delay={0.3}
-      />
-      
-      <PageTransition className="relative z-10 py-6 px-4">
-        <div className="max-w-lg mx-auto space-y-6">
-          <motion.div 
-            className="text-center space-y-2"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
+    <div className="min-h-screen pb-8">
+      <div className="max-w-lg mx-auto px-4 py-8 space-y-8">
+        
+        {/* Header with back navigation */}
+        <header className="flex items-center gap-4 animate-fade-in-up">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
+            aria-label="Back to dashboard"
           >
-            <motion.h1 
-              className="text-2xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent"
-              animate={{ scale: [1, 1.02, 1] }}
-              transition={{ duration: 3, repeat: Infinity }}
-            >
-              Daily Check-in
-            </motion.h1>
-            <motion.p 
-              className="text-calm-500 text-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              ⏱ 15 seconds to reflect
-            </motion.p>
-            <motion.p 
-              className="text-yellow-600 font-medium"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              {dashboard.resolution.title}
-            </motion.p>
-          </motion.div>
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="glass-subtle p-2.5 rounded-xl glow-teal">
+              <PenLine className="w-5 h-5 text-teal-600" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-neutral-800">
+                Check-in
+              </h1>
+              <p className="text-sm text-neutral-500">
+                {dashboard.resolution.title}
+              </p>
+            </div>
+          </div>
+        </header>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2, type: 'spring' }}
-        >
-          <Card className="p-4 space-y-4 backdrop-blur-sm bg-white/80 border-white/50 shadow-lg">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <label className="block text-sm font-medium text-calm-700 mb-1">
+        {/* Check-in form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* What happened section */}
+          <div className="glass-strong rounded-2xl p-6 space-y-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <div>
+              <label 
+                htmlFor="planned"
+                className="block text-sm font-medium text-teal-600 mb-3"
+              >
                 What did you plan to do?
               </label>
               <Input
+                id="planned"
                 value={form.planned}
-                onChange={(e) => setForm({ ...form, planned: e.target.value })}
+                onChange={(e) => handleInputChange('planned', e.target.value)}
                 placeholder="e.g., Complete one lesson"
+                maxLength={INPUT_LIMITS.PLANNED_MAX_LENGTH}
                 required
                 autoFocus
-                className="bg-white/50"
               />
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <label className="block text-sm font-medium text-calm-700 mb-1">
+            <div>
+              <label 
+                htmlFor="actual"
+                className="block text-sm font-medium text-teal-600 mb-3"
+              >
                 What actually happened?
               </label>
               <Input
+                id="actual"
                 value={form.actual}
-                onChange={(e) => setForm({ ...form, actual: e.target.value })}
-                placeholder="e.g., Did half, got distracted"
+                onChange={(e) => handleInputChange('actual', e.target.value)}
+                placeholder="e.g., Did half, then stopped"
+                maxLength={INPUT_LIMITS.ACTUAL_MAX_LENGTH}
                 required
-                className="bg-white/50"
               />
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <label className="block text-sm font-medium text-calm-700 mb-1">
-                Any blockers? (optional)
+            <div>
+              <label 
+                htmlFor="blocker"
+                className="block text-sm font-medium text-neutral-500 mb-3"
+              >
+                Any blockers? <span className="text-neutral-400 font-normal">(optional)</span>
               </label>
               <Input
+                id="blocker"
                 value={form.blocker}
-                onChange={(e) => setForm({ ...form, blocker: e.target.value })}
-                placeholder="e.g., Kids needed attention"
-                className="bg-white/50"
+                onChange={(e) => handleInputChange('blocker', e.target.value)}
+                placeholder="e.g., Was interrupted"
+                maxLength={INPUT_LIMITS.BLOCKER_MAX_LENGTH}
+                variant="glass"
               />
-            </motion.div>
-          </Card>
-        </motion.div>
+            </div>
+            
+            {/* Error display */}
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">
+                {error}
+              </div>
+            )}
+          </div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4, type: 'spring' }}
-        >
-          <Card className="p-4 space-y-4 backdrop-blur-sm bg-white/80 border-white/50 shadow-lg">
-            <motion.div 
-              className="flex items-center justify-between"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              <label className="text-sm font-medium text-calm-700">
+          {/* Completion and friction */}
+          <div className="glass-strong rounded-2xl p-6 space-y-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="flex items-center justify-between glass-quiet rounded-xl p-4">
+              <label 
+                htmlFor="completed"
+                className="text-sm font-medium text-neutral-700"
+              >
                 Did you complete it?
               </label>
               <Toggle
                 checked={form.completed}
                 onChange={(v) => setForm({ ...form, completed: v })}
+                label="Completed"
               />
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-calm-700">
-                  How much friction?
+            <div className="glass-quiet rounded-xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-sm font-medium text-neutral-700">
+                  How much friction did you feel?
                 </label>
-                <motion.span 
-                  className={`text-sm font-medium px-2 py-0.5 rounded-lg ${
-                    form.friction === 1 ? 'text-green-600 bg-green-100' :
-                    form.friction === 2 ? 'text-yellow-600 bg-yellow-100' : 'text-red-600 bg-red-100'
-                  }`}
-                  key={form.friction}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                >
+                <span className="text-sm font-medium text-teal-600 tabular-nums">
                   {frictionLabels[form.friction - 1]}
-                </motion.span>
+                </span>
               </div>
               <Slider
                 min={1}
                 max={3}
                 value={form.friction}
                 onChange={(v) => setForm({ ...form, friction: v })}
+                label="Friction level"
               />
-              <div className="flex justify-between text-xs text-calm-400 mt-1">
-                <span>😊 Easy</span>
-                <span>😰 Hard</span>
+              <div className="flex justify-between mt-3 text-xs text-neutral-400">
+                <span>Easy</span>
+                <span>Challenging</span>
               </div>
-            </motion.div>
-          </Card>
-        </motion.div>
+            </div>
+          </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <Button 
-            type="submit" 
-            size="lg" 
-            className="w-full gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-lg shadow-yellow-500/30" 
-            disabled={loading}
-          >
-            {loading ? '✨ Saving...' : 'Log Check-in'} <CheckCircle className="w-5 h-5" />
-          </Button>
-        </motion.div>
-      </form>
-
-      <motion.button
-        onClick={() => router.push('/dashboard')}
-        className="w-full text-center text-sm text-calm-500 hover:text-calm-700 py-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        whileHover={{ x: -5 }}
-      >
-        ← Back to Dashboard
-      </motion.button>
-        </div>
-      </PageTransition>
+          {/* Submit */}
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <Button 
+              type="submit" 
+              size="lg" 
+              className="w-full"
+              disabled={loading || !form.planned || !form.actual}
+            >
+              {loading ? 'Saving...' : 'Save Check-in'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
