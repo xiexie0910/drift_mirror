@@ -96,7 +96,8 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
             )
             
             if changes:
-                new_plan = create_new_plan_version(
+                # Create new plan version (result not needed, just need to create it)
+                create_new_plan_version(
                     data.resolution_id, current_plan, changes, recovery_step
                 )
                 plan_updated = True

@@ -8,13 +8,13 @@
  * Security: Error handling without console exposure
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { ChevronDown, ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Eye } from 'lucide-react';
+import { ChevronDown, ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Eye, Loader2 } from 'lucide-react';
 import { api, Dashboard } from '@/lib/api';
 
-export default function MirrorPage() {
+function MirrorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const goalId = searchParams.get('goal');
@@ -286,5 +286,18 @@ export default function MirrorPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function MirrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200">
+        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+      </div>
+    }>
+      <MirrorContent />
+    </Suspense>
   );
 }

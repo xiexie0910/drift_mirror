@@ -1,188 +1,336 @@
 'use client';
-
 /**
- * DriftMirror Onboarding
+ * Onboarding Page - Single-Screen Intent Capture
  * ============================================================
- * 
- * Calm Futurism Design with Glass Materials
- * Security: Input validation, sanitization, error handling
+ * Phase 1: Capture goal, why, boundaries, and optional minimum action
+ * in one uninterrupted flow. Submit for full-payload assessment.
  */
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Sparkles, ArrowRight, Loader2, ChevronDown, AlertCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
-import { ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
-import { api, RealityCheckResponse, GoalContractSoFar, ApiError } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { 
   sanitizeText, 
   validateGoal, 
   validateWhy, 
-  validateMinimumAction,
-  validateBoundaries,
   INPUT_LIMITS 
 } from '@/lib/validation';
+import type { 
+  AssessmentResponse, 
+  RewriteOption, 
+  QuestionnairePayload,
+  ResourceDiscoveryResponse,
+  CandidateAction,
+} from '@/lib/api';
+
+// ============================================================
+// Boundary Chips
+// ============================================================
+
+const BOUNDARY_OPTIONS = [
+  'No burnout',
+  'No losing sleep',
+  'No skipping family time',
+  'No expensive equipment',
+  'Under 30 min/day',
+  'No guilt after missed days',
+  'More than 10 minutes a day',
+  'No major lifestyle changes',
+];
 
 // ============================================================
 // Types
 // ============================================================
-type Step = 'goal' | 'why' | 'boundaries' | 'minimum_action' | 'review';
 
-interface GoalContract {
+interface FormState {
   goal: string;
   why: string;
-  boundaries: { chips: string[]; custom: string };
-  minimum_action: { text: string; minutes: number };
+  boundaryChips: string[];
+  customBoundary: string;
+  minimumAction: string;
+  minimumMinutes: number;
+  frequencyPerWeek: number;
 }
 
-const BOUNDARY_OPTIONS = [
-  'No burnout',
-  'No 80-hour weeks',
-  'No debt',
-  'No sacrificing relationships',
-  'No losing sleep',
-  'No constant stress',
-];
-
-const STEP_CONFIG: Record<Exclude<Step, 'review'>, { 
-  title: string; 
-  description: string;
-  placeholder?: string;
-}> = {
-  goal: {
-    title: 'What do you want to achieve?',
-    description: 'State it as an outcome, not a feeling.',
-    placeholder: 'e.g., Run a 5K, Read 12 books this year',
-  },
-  why: {
-    title: 'Why does this matter?',
-    description: 'One honest reason. This is for you, not the system.',
-    placeholder: 'e.g., To have more energy for my family',
-  },
-  boundaries: {
-    title: 'What should this goal NOT cost you?',
-    description: 'Select your non-negotiables.',
-  },
-  minimum_action: {
-    title: 'What is the smallest action you can do on a bad day?',
-    description: '2-10 minutes is ideal. The system will adapt from here.',
-    placeholder: 'e.g., Put on running shoes and step outside',
-  },
-};
+type Phase = 'input' | 'assessing' | 'refinement' | 'discovering' | 'action_picker' | 'creating';
 
 // ============================================================
-// Reality Check Panel (Glass - system observation)
+// Assessment Feedback Panel
 // ============================================================
-function RealityCheckPanel({
+
+function AssessmentPanel({
   response,
-  loading,
-  onSelectSuggestion,
-  onKeepMine,
+  onApplyRewrite,
   onContinue,
+  onEdit,
 }: {
-  response: RealityCheckResponse | null;
-  loading: boolean;
-  onSelectSuggestion: (text: string) => void;
-  onKeepMine: () => void;
+  response: AssessmentResponse;
+  onApplyRewrite: (rewrite: RewriteOption) => void;
   onContinue: () => void;
+  onEdit: () => void;
 }) {
-  if (loading) {
-    return (
-      <div className="glass-subtle rounded-xl p-5 mt-6 animate-pulse-soft">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-          <p className="text-sm text-neutral-500">Analyzing your input...</p>
-        </div>
-      </div>
-    );
-  }
+  const hasIssues = response.issues.length > 0;
+  const hasRewrites = response.rewrite_options.length > 0;
 
-  if (!response) return null;
-
+  // Show different UI based on status
   if (response.status === 'ok') {
     return (
-      <div className="glass-strong rounded-xl p-5 mt-6 space-y-4 animate-fade-in-up">
-        <div className="flex items-center gap-3 text-teal-600">
-          <div className="p-2 bg-teal-500/10 rounded-lg">
-            <Check className="w-5 h-5" />
+      <div className="glass-strong rounded-2xl p-6 space-y-4 animate-fade-in-up">
+        <div className="flex items-start gap-3">
+          <div className="glass-subtle p-2 rounded-lg glow-teal">
+            <Check className="w-5 h-5 text-teal-600" />
           </div>
-          <span className="font-medium">Clear and actionable</span>
+          <div>
+            <h3 className="font-medium text-neutral-800">Looking good</h3>
+            <p className="text-sm text-neutral-500 mt-1">
+              Your goal is clear and actionable.
+            </p>
+          </div>
         </div>
-        <Button onClick={onContinue} className="w-full gap-2">
-          Continue <ArrowRight className="w-4 h-4" />
-        </Button>
+
+        {/* Clarity Signals */}
+        <div className="glass-quiet rounded-xl p-4 space-y-3">
+          <p className="text-xs text-neutral-500 uppercase tracking-wider">Clarity Signals</p>
+          <div className="grid grid-cols-2 gap-3">
+            <SignalBar label="Clarity" value={response.signals.clarity} />
+            <SignalBar label="Scope" value={response.signals.scope} />
+            <SignalBar label="Actionability" value={response.signals.actionability} />
+            <SignalBar label="Boundaries" value={response.signals.boundaries} />
+          </div>
+        </div>
+
+        {response.needs_resource_discovery && (
+          <div className="glass-quiet rounded-xl p-4 border border-teal-200">
+            <p className="text-sm text-teal-700">
+              <span className="font-medium">Next up:</span> We&apos;ll help you discover resources and find your first step.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <Button onClick={onEdit} variant="glass" className="flex-1">
+            Edit
+          </Button>
+          <Button onClick={onContinue} className="flex-1 gap-2">
+            Continue <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     );
   }
 
+  // Needs refinement
   return (
-    <div className="glass-strong rounded-xl p-5 mt-6 space-y-5 animate-fade-in-up">
+    <div className="glass-strong rounded-2xl p-6 space-y-5 animate-fade-in-up">
+      <div className="flex items-start gap-3">
+        <div className="glass-subtle p-2 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-amber-600" />
+        </div>
+        <div>
+          <h3 className="font-medium text-neutral-800">Let&apos;s sharpen this</h3>
+          <p className="text-sm text-neutral-500 mt-1">
+            A few adjustments will help you stay on track.
+          </p>
+        </div>
+      </div>
+
       {/* Issues */}
-      {response.issues.length > 0 && (
-        <div>
-          <p className="text-sm text-neutral-600 mb-3 font-medium">Consider:</p>
-          <ul className="space-y-2">
-            {response.issues.map((issue, i) => (
-              <li key={i} className="text-sm text-neutral-700 flex items-start gap-3 glass-quiet p-3 rounded-lg">
-                <span className="text-teal-500 mt-0.5">•</span>
-                {issue}
-              </li>
-            ))}
-          </ul>
+      {hasIssues && (
+        <div className="space-y-2">
+          {response.issues.map((issue, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm text-neutral-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              {issue}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Suggestions */}
-      {response.rewrite_options.length > 0 && (
-        <div>
-          <p className="text-sm text-neutral-600 mb-3 font-medium">Alternatives:</p>
-          <div className="space-y-2">
-            {response.rewrite_options.map((option, i) => (
-              <button
-                key={i}
-                onClick={() => onSelectSuggestion(option)}
-                className="w-full text-left p-4 rounded-xl glass-subtle
-                           hover:bg-white/60 hover:border-teal-200 
-                           transition-all duration-300 text-sm
-                           hover:shadow-lg hover:-translate-y-0.5"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+      {/* Rewrite suggestions */}
+      {hasRewrites && (
+        <div className="space-y-3">
+          <p className="text-xs text-neutral-500 uppercase tracking-wider">Suggested refinement</p>
+          {response.rewrite_options.map((rewrite, i) => (
+            <button
+              key={i}
+              onClick={() => onApplyRewrite(rewrite)}
+              className="w-full text-left glass-quiet rounded-xl p-4 hover:bg-white/60 transition-all duration-300 group"
+            >
+              <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
+                {rewrite.field === 'goal' ? 'Goal' : rewrite.field === 'why' ? 'Why' : 'First Step'}
+              </p>
+              <p className="text-neutral-800 font-medium group-hover:text-teal-700 transition-colors">
+                {rewrite.text}
+              </p>
+              {rewrite.rationale && (
+                <p className="text-xs text-neutral-500 mt-2">{rewrite.rationale}</p>
+              )}
+            </button>
+          ))}
         </div>
       )}
 
-      <button
-        onClick={onKeepMine}
-        className="text-sm text-neutral-500 hover:text-teal-600 transition-colors"
-      >
-        Keep my original →
-      </button>
+      {/* Clarity Signals */}
+      <div className="glass-quiet rounded-xl p-4 space-y-3">
+        <p className="text-xs text-neutral-500 uppercase tracking-wider">Clarity Signals</p>
+        <div className="grid grid-cols-2 gap-3">
+          <SignalBar label="Clarity" value={response.signals.clarity} />
+          <SignalBar label="Scope" value={response.signals.scope} />
+          <SignalBar label="Actionability" value={response.signals.actionability} />
+          <SignalBar label="Boundaries" value={response.signals.boundaries} />
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <Button onClick={onEdit} variant="glass" className="flex-1">
+          Edit myself
+        </Button>
+        <Button onClick={onContinue} className="flex-1 gap-2">
+          Continue anyway <ArrowRight className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 }
 
 // ============================================================
-// Progress Indicator - Glass dots
+// Signal Bar Component
 // ============================================================
-function ProgressIndicator({ steps, currentIndex }: { steps: string[]; currentIndex: number }) {
+
+function SignalBar({ label, value }: { label: string; value: number }) {
+  const percentage = Math.round(value * 100);
+  const color = value >= 0.7 ? 'bg-teal-500' : value >= 0.4 ? 'bg-amber-400' : 'bg-rose-400';
+  
   return (
-    <div className="flex justify-center gap-3">
-      {steps.slice(0, -1).map((_, i) => (
-        <div
-          key={i}
-          className={`h-2 rounded-full transition-all duration-500 ${
-            i === currentIndex
-              ? 'w-10 bg-gradient-to-r from-teal-400 to-teal-500 shadow-lg shadow-teal-500/30'
-              : i < currentIndex
-              ? 'w-2 bg-teal-400'
-              : 'w-2 bg-white/50'
-          }`}
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-neutral-600">{label}</span>
+        <span className="text-neutral-400">{percentage}%</span>
+      </div>
+      <div className="h-1.5 bg-neutral-200 rounded-full overflow-hidden">
+        <div 
+          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          style={{ width: `${percentage}%` }}
         />
-      ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Action Picker Component
+// ============================================================
+
+function ActionPicker({
+  discovery,
+  selectedAction,
+  goalTitle,
+  onSelectAction,
+  onContinue,
+  onSkip,
+}: {
+  discovery: ResourceDiscoveryResponse;
+  selectedAction: CandidateAction | null;
+  goalTitle: string;
+  onSelectAction: (action: CandidateAction) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+}) {
+  const difficultyColor = (d: string) => {
+    switch (d) {
+      case 'easy': return 'bg-teal-100 text-teal-700';
+      case 'medium': return 'bg-amber-100 text-amber-700';
+      case 'hard': return 'bg-rose-100 text-rose-700';
+      default: return 'bg-neutral-100 text-neutral-700';
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
+      <div className="text-center">
+        <div className="flex justify-center mb-4">
+          <div className="glass-subtle p-3 rounded-xl glow-teal">
+            <Sparkles className="w-6 h-6 text-teal-600" />
+          </div>
+        </div>
+        <h2 className="text-xl font-semibold text-neutral-800">
+          Pick your first step
+        </h2>
+        <p className="text-neutral-500 mt-2">
+          Choose something you can do even on a bad day.
+        </p>
+        {/* Show the goal */}
+        <div className="mt-4 glass-quiet rounded-xl px-4 py-3 inline-block">
+          <p className="text-xs text-neutral-500 uppercase tracking-wider">Your Goal</p>
+          <p className="text-neutral-800 font-medium mt-1">{goalTitle}</p>
+        </div>
+      </div>
+
+      {/* Candidate Actions */}
+      <div className="glass-strong rounded-2xl p-5 space-y-3">
+        <p className="text-xs text-teal-600 uppercase tracking-wider font-medium">
+          Minimum Actions
+        </p>
+        <div className="space-y-2">
+          {discovery.candidate_actions.map((action, i) => (
+            <button
+              key={i}
+              onClick={() => onSelectAction(action)}
+              className={`
+                w-full text-left p-4 rounded-xl transition-all duration-300
+                ${selectedAction?.text === action.text
+                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg'
+                  : 'glass-quiet hover:bg-white/60 hover:-translate-y-0.5'
+                }
+              `}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <p className={`font-medium ${selectedAction?.text === action.text ? 'text-white' : 'text-neutral-800'}`}>
+                    {action.text}
+                  </p>
+                  {action.rationale && (
+                    <p className={`text-xs mt-1 ${selectedAction?.text === action.text ? 'text-white/80' : 'text-neutral-500'}`}>
+                      {action.rationale}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    selectedAction?.text === action.text ? 'bg-white/20 text-white' : difficultyColor(action.difficulty)
+                  }`}>
+                    {action.difficulty}
+                  </span>
+                  <span className={`text-xs font-medium tabular-nums ${
+                    selectedAction?.text === action.text ? 'text-white' : 'text-teal-600'
+                  }`}>
+                    {action.minutes}m
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3">
+        <Button onClick={onSkip} variant="glass" className="flex-1">
+          Skip for now
+        </Button>
+        <Button 
+          onClick={onContinue} 
+          className="flex-1 gap-2"
+          disabled={!selectedAction}
+        >
+          Continue <ArrowRight className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -190,164 +338,109 @@ function ProgressIndicator({ steps, currentIndex }: { steps: string[]; currentIn
 // ============================================================
 // Main Component
 // ============================================================
+
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>('goal');
-  const [loading, setLoading] = useState(false);
-  const [checkLoading, setCheckLoading] = useState(false);
-  const [realityResponse, setRealityResponse] = useState<RealityCheckResponse | null>(null);
+  const [phase, setPhase] = useState<Phase>('input');
+  const [assessment, setAssessment] = useState<AssessmentResponse | null>(null);
+  const [discovery, setDiscovery] = useState<ResourceDiscoveryResponse | null>(null);
+  const [selectedAction, setSelectedAction] = useState<CandidateAction | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  const [contract, setContract] = useState<GoalContract>({
+  const [showOptionalSection, setShowOptionalSection] = useState(false);
+
+  const [form, setForm] = useState<FormState>({
     goal: '',
     why: '',
-    boundaries: { chips: [], custom: '' },
-    minimum_action: { text: '', minutes: 10 },
+    boundaryChips: [],
+    customBoundary: '',
+    minimumAction: '',
+    minimumMinutes: 10,
+    frequencyPerWeek: 3,
   });
 
-  const steps: Step[] = ['goal', 'why', 'boundaries', 'minimum_action', 'review'];
-  const currentStepIndex = steps.indexOf(step);
-
-  // Build context for API
-  const buildContext = useCallback((): GoalContractSoFar => ({
-    goal: contract.goal || null,
-    why: contract.why || null,
-    boundaries: contract.boundaries.chips.length > 0 || contract.boundaries.custom 
-      ? { chips: contract.boundaries.chips, custom: contract.boundaries.custom || null }
-      : null,
-    minimum_action: contract.minimum_action.text 
-      ? { text: contract.minimum_action.text, minutes: contract.minimum_action.minutes }
-      : null,
-  }), [contract]);
-
-  // Get current step input
-  const getUserInput = useCallback(() => {
-    switch (step) {
-      case 'goal': return { goal: contract.goal };
-      case 'why': return { why: contract.why };
-      case 'boundaries': return { chips: contract.boundaries.chips, custom: contract.boundaries.custom };
-      case 'minimum_action': return { text: contract.minimum_action.text, minutes: contract.minimum_action.minutes };
-      default: return {};
-    }
-  }, [step, contract]);
-
-  // Go to next step
-  const goNext = useCallback(() => {
-    setRealityResponse(null);
-    setError(null);
-    const idx = steps.indexOf(step);
-    if (idx < steps.length - 1) {
-      setStep(steps[idx + 1]);
-    }
-  }, [step, steps]);
-
-  // Go back
-  const goBack = useCallback(() => {
-    setRealityResponse(null);
-    setError(null);
-    const idx = steps.indexOf(step);
-    if (idx > 0) {
-      setStep(steps[idx - 1]);
-    }
-  }, [step, steps]);
-
-  // Run reality check
-  const runCheck = useCallback(async () => {
-    if (step === 'review' || step === 'boundaries') {
-      goNext();
-      return;
-    }
-    
-    setCheckLoading(true);
-    setRealityResponse(null);
-    
-    try {
-      const response = await api.realityCheck({
-        step: step as 'goal' | 'why' | 'boundaries' | 'minimum_action',
-        goal_contract_so_far: buildContext(),
-        user_input: getUserInput(),
-      });
-      setRealityResponse(response);
-    } catch {
-      // Continue on error
-      goNext();
-    } finally {
-      setCheckLoading(false);
-    }
-  }, [step, buildContext, getUserInput, goNext]);
-
-  // Handle suggestion
-  const handleSuggestion = useCallback((text: string) => {
-    switch (step) {
-      case 'goal':
-        setContract(c => ({ ...c, goal: text }));
-        break;
-      case 'why':
-        setContract(c => ({ ...c, why: text }));
-        break;
-      case 'minimum_action':
-        setContract(c => ({ ...c, minimum_action: { ...c.minimum_action, text } }));
-        break;
-    }
-    goNext();
-  }, [step, goNext]);
-
-  // Toggle boundary
+  // Toggle boundary chip
   const toggleBoundary = useCallback((chip: string) => {
-    setContract(c => ({
-      ...c,
-      boundaries: {
-        ...c.boundaries,
-        chips: c.boundaries.chips.includes(chip)
-          ? c.boundaries.chips.filter(ch => ch !== chip)
-          : [...c.boundaries.chips, chip],
-      },
+    setForm(f => ({
+      ...f,
+      boundaryChips: f.boundaryChips.includes(chip)
+        ? f.boundaryChips.filter(c => c !== chip)
+        : [...f.boundaryChips, chip],
     }));
   }, []);
 
-  // Create resolution - with validation and sanitization
-  const handleCreate = useCallback(async () => {
-    // Validate all fields before submission
-    const goalValidation = validateGoal(contract.goal);
+  // Build payload for assessment
+  const buildPayload = useCallback((): QuestionnairePayload => ({
+    goal: sanitizeText(form.goal),
+    why: sanitizeText(form.why),
+    boundaries: {
+      chips: form.boundaryChips,
+      custom: form.customBoundary.trim() || null,
+    },
+    minimum_action: form.minimumAction.trim()
+      ? { text: sanitizeText(form.minimumAction), minutes: form.minimumMinutes }
+      : null,
+  }), [form]);
+
+  // Check if form is valid for submission
+  const isFormValid = useCallback(() => {
+    const goalValid = validateGoal(form.goal).valid;
+    const whyValid = validateWhy(form.why).valid;
+    const hasBoundary = form.boundaryChips.length > 0 || form.customBoundary.trim().length > 0;
+    return goalValid && whyValid && hasBoundary;
+  }, [form]);
+
+  // Submit for assessment
+  const handleSubmit = useCallback(async () => {
+    // Validate
+    const goalValidation = validateGoal(form.goal);
     if (!goalValidation.valid) {
       setError(goalValidation.error || 'Invalid goal');
       return;
     }
-
-    const whyValidation = validateWhy(contract.why);
+    const whyValidation = validateWhy(form.why);
     if (!whyValidation.valid) {
       setError(whyValidation.error || 'Invalid reason');
       return;
     }
-
-    const boundariesValidation = validateBoundaries(
-      contract.boundaries.chips,
-      contract.boundaries.custom
-    );
-    if (!boundariesValidation.valid) {
-      setError(boundariesValidation.error || 'Invalid boundaries');
+    if (form.boundaryChips.length === 0 && !form.customBoundary.trim()) {
+      setError('Select at least one boundary');
       return;
     }
 
-    const actionValidation = validateMinimumAction(
-      contract.minimum_action.text,
-      contract.minimum_action.minutes
-    );
-    if (!actionValidation.valid) {
-      setError(actionValidation.error || 'Invalid minimum action');
-      return;
-    }
-
-    setLoading(true);
+    setPhase('assessing');
     setError(null);
-    
+
     try {
+      const response = await api.assessQuestionnaire({
+        payload: buildPayload(),
+      });
+      setAssessment(response);
+      setPhase('refinement');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Assessment failed. Please try again.');
+      }
+      setPhase('input');
+    }
+  }, [form, buildPayload]);
+
+  // Create the resolution - defined early so other callbacks can use it
+  const createResolution = useCallback(async () => {
+    setPhase('creating');
+    setError(null);
+
+    try {
+      // Use selected action if available, otherwise use form values
+      const actionMinutes = selectedAction?.minutes || form.minimumMinutes || 10;
+      
       await api.createResolution({
-        title: sanitizeText(contract.goal),
-        why: sanitizeText(contract.why) || null,
+        title: sanitizeText(form.goal),
+        why: sanitizeText(form.why) || null,
         mode: 'personal_growth',
-        frequency_per_week: 3,
-        min_minutes: contract.minimum_action.minutes || 10,
+        frequency_per_week: form.frequencyPerWeek,
+        min_minutes: actionMinutes,
         time_window: 'morning',
       });
       router.push('/dashboard');
@@ -357,234 +450,349 @@ export default function OnboardingPage() {
       } else {
         setError('Failed to create goal. Please try again.');
       }
-    } finally {
-      setLoading(false);
+      setPhase(discovery ? 'action_picker' : 'refinement');
     }
-  }, [contract, router]);
+  }, [form, router, selectedAction, discovery]);
 
-  // Check validity
-  const isValid = useCallback(() => {
-    switch (step) {
-      case 'goal': return contract.goal.trim().length > 0;
-      case 'why': return contract.why.trim().length > 0;
-      case 'boundaries': return contract.boundaries.chips.length > 0 || contract.boundaries.custom.trim().length > 0;
-      case 'minimum_action': return contract.minimum_action.text.trim().length > 0;
-      default: return true;
+  // Apply a suggested rewrite and continue directly (skip back to edit)
+  const applyRewrite = useCallback(async (rewrite: RewriteOption) => {
+    // Update form with the refined value
+    const updatedForm = { ...form };
+    if (rewrite.field === 'goal') {
+      updatedForm.goal = rewrite.text;
+    } else if (rewrite.field === 'why') {
+      updatedForm.why = rewrite.text;
+    } else if (rewrite.field === 'minimum_action') {
+      updatedForm.minimumAction = rewrite.text;
     }
-  }, [step, contract]);
+    setForm(updatedForm);
+    
+    // The refinement should give us better clarity - proceed directly
+    // Check if we need resource discovery
+    if (assessment?.needs_resource_discovery && !discovery && !updatedForm.minimumAction.trim()) {
+      setPhase('discovering');
+      setError(null);
+      
+      try {
+        const payload: QuestionnairePayload = {
+          goal: sanitizeText(updatedForm.goal),
+          why: sanitizeText(updatedForm.why),
+          boundaries: {
+            chips: updatedForm.boundaryChips,
+            custom: updatedForm.customBoundary.trim() || null,
+          },
+          minimum_action: updatedForm.minimumAction.trim()
+            ? { text: sanitizeText(updatedForm.minimumAction), minutes: updatedForm.minimumMinutes }
+            : null,
+        };
+        
+        const discoveryResponse = await api.discoverResources({
+          payload,
+          goal_type: assessment.goal_type,
+        });
+        setDiscovery(discoveryResponse);
+        if (discoveryResponse.recommended_action) {
+          setSelectedAction(discoveryResponse.recommended_action);
+        }
+        setPhase('action_picker');
+      } catch (err) {
+        // If discovery fails, go straight to create
+        await createResolution();
+      }
+    } else {
+      // No discovery needed, create directly
+      await createResolution();
+    }
+  }, [form, assessment, discovery, createResolution]);
 
-  // Render step content
-  const renderStep = () => {
-    if (step === 'review') {
-      return (
-        <div className="space-y-8 animate-fade-in-up">
-          <div className="text-center">
+  // Continue from assessment - check if resource discovery needed
+  const handleContinue = useCallback(async () => {
+    // If resource discovery is needed and we haven't done it yet
+    if (assessment?.needs_resource_discovery && !discovery && !form.minimumAction.trim()) {
+      setPhase('discovering');
+      setError(null);
+      
+      try {
+        const discoveryResponse = await api.discoverResources({
+          payload: buildPayload(),
+          goal_type: assessment.goal_type,
+        });
+        setDiscovery(discoveryResponse);
+        // Pre-select recommended action if available
+        if (discoveryResponse.recommended_action) {
+          setSelectedAction(discoveryResponse.recommended_action);
+        }
+        setPhase('action_picker');
+      } catch (err) {
+        // If discovery fails, just continue to create
+        await createResolution();
+      }
+      return;
+    }
+    
+    // Otherwise, go straight to creation
+    await createResolution();
+  }, [assessment, discovery, form, buildPayload, createResolution]);
+
+  // Skip action picker and create without minimum action
+  const handleSkipActionPicker = useCallback(async () => {
+    await createResolution();
+  }, [createResolution]);
+
+  // Go back to editing
+  const handleEdit = useCallback(() => {
+    setPhase('input');
+    setAssessment(null);
+    setDiscovery(null);
+    setSelectedAction(null);
+  }, []);
+
+  // ============================================================
+  // Render
+  // ============================================================
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="max-w-xl w-full space-y-8">
+        
+        {/* Header - only show during input phase */}
+        {phase === 'input' && (
+          <div className="text-center animate-fade-in-up">
             <div className="flex justify-center mb-4">
               <div className="glass-subtle p-3 rounded-xl glow-teal">
                 <Sparkles className="w-6 h-6 text-teal-600" />
               </div>
             </div>
-            <h1 className="text-2xl font-semibold text-neutral-800">Review your setup</h1>
-            <p className="text-neutral-500 mt-2">Confirm these details to begin.</p>
+            <h1 className="text-2xl font-semibold text-neutral-800">
+              Set your intention
+            </h1>
+            <p className="text-neutral-500 mt-2">
+              Answer a few questions to clarify what you want.
+            </p>
           </div>
+        )}
 
-          <div className="glass-strong rounded-2xl p-6 space-y-5">
-            <div className="glass-quiet rounded-xl p-4">
-              <p className="text-xs text-teal-600 uppercase tracking-wider font-medium">Goal</p>
-              <p className="text-neutral-800 mt-2 font-medium">{contract.goal}</p>
-            </div>
-            
-            {contract.why && (
-              <div className="glass-quiet rounded-xl p-4">
-                <p className="text-xs text-teal-600 uppercase tracking-wider font-medium">Why</p>
-                <p className="text-neutral-700 mt-2">{contract.why}</p>
-              </div>
-            )}
-            
-            <div className="glass-quiet rounded-xl p-4">
-              <p className="text-xs text-teal-600 uppercase tracking-wider font-medium">Boundaries</p>
-              <div className="flex flex-wrap gap-2 mt-3">
-                {contract.boundaries.chips.map(chip => (
-                  <span key={chip} className="text-sm px-3 py-1.5 glass-subtle rounded-lg text-neutral-700">
-                    {chip}
-                  </span>
-                ))}
-                {contract.boundaries.custom && (
-                  <span className="text-sm px-3 py-1.5 glass-subtle rounded-lg text-neutral-700">
-                    {contract.boundaries.custom}
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            <div className="glass-quiet rounded-xl p-4">
-              <p className="text-xs text-teal-600 uppercase tracking-wider font-medium">Minimum action</p>
-              <p className="text-neutral-700 mt-2">
-                {contract.minimum_action.text} 
-                <span className="text-teal-600 ml-2 font-medium">({contract.minimum_action.minutes} min)</span>
-              </p>
+        {/* Assessment Phase */}
+        {phase === 'assessing' && (
+          <div className="glass-strong rounded-2xl p-8 flex items-center justify-center animate-fade-in-up">
+            <div className="text-center space-y-3">
+              <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
+              <p className="text-neutral-600">Analyzing your goal...</p>
             </div>
           </div>
+        )}
 
-          <div className="space-y-3">
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">
-                {error}
-              </div>
-            )}
-            <Button onClick={handleCreate} size="lg" className="w-full" disabled={loading}>
-              {loading ? 'Creating...' : 'Begin tracking'}
-            </Button>
-            <button
-              onClick={goBack}
-              className="w-full py-3 text-sm text-neutral-500 hover:text-teal-600 transition-colors"
-            >
-              Go back and edit
-            </button>
-          </div>
-        </div>
-      );
-    }
+        {/* Refinement Phase */}
+        {phase === 'refinement' && assessment && (
+          <AssessmentPanel
+            response={assessment}
+            onApplyRewrite={applyRewrite}
+            onContinue={handleContinue}
+            onEdit={handleEdit}
+          />
+        )}
 
-    const config = STEP_CONFIG[step];
-
-    return (
-      <div className="space-y-8 animate-fade-in-up">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-neutral-800">{config.title}</h1>
-          <p className="text-neutral-500 mt-2">{config.description}</p>
-        </div>
-
-        {/* Input area */}
-        {step === 'boundaries' ? (
-          <div className="glass-strong rounded-2xl p-6 space-y-5">
-            <div className="flex flex-wrap gap-2">
-              {BOUNDARY_OPTIONS.map(chip => (
-                <button
-                  key={chip}
-                  onClick={() => toggleBoundary(chip)}
-                  className={`
-                    px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
-                    ${contract.boundaries.chips.includes(chip)
-                      ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
-                      : 'glass-subtle text-neutral-600 hover:bg-white/60 hover:-translate-y-0.5'
-                    }
-                  `}
-                >
-                  {chip}
-                </button>
-              ))}
+        {/* Discovering Phase */}
+        {phase === 'discovering' && (
+          <div className="glass-strong rounded-2xl p-8 flex items-center justify-center animate-fade-in-up">
+            <div className="text-center space-y-3">
+              <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
+              <p className="text-neutral-600">Finding resources and first steps...</p>
             </div>
-            <Input
-              value={contract.boundaries.custom}
-              onChange={(e) => setContract(c => ({ 
-                ...c, 
-                boundaries: { ...c.boundaries, custom: e.target.value }
-              }))}
-              placeholder="Or add your own..."
-              maxLength={INPUT_LIMITS.CUSTOM_BOUNDARY_MAX_LENGTH}
-            />
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">
-                {error}
-              </div>
-            )}
           </div>
-        ) : step === 'minimum_action' ? (
-          <div className="glass-strong rounded-2xl p-6 space-y-5">
-            <Input
-              value={contract.minimum_action.text}
-              onChange={(e) => setContract(c => ({ 
-                ...c, 
-                minimum_action: { ...c.minimum_action, text: e.target.value }
-              }))}
-              placeholder={config.placeholder}
-              maxLength={INPUT_LIMITS.MINIMUM_ACTION_MAX_LENGTH}
-              autoFocus
-            />
-            <div className="glass-quiet rounded-xl p-4">
-              <div className="flex justify-between mb-3">
-                <span className="text-sm text-neutral-600">Duration</span>
-                <span className="text-sm font-medium text-teal-600 tabular-nums">
-                  {contract.minimum_action.minutes} min
+        )}
+
+        {/* Action Picker Phase */}
+        {phase === 'action_picker' && discovery && (
+          <ActionPicker
+            discovery={discovery}
+            selectedAction={selectedAction}
+            goalTitle={form.goal}
+            onSelectAction={setSelectedAction}
+            onContinue={createResolution}
+            onSkip={handleSkipActionPicker}
+          />
+        )}
+
+        {/* Creating Phase */}
+        {phase === 'creating' && (
+          <div className="glass-strong rounded-2xl p-8 flex items-center justify-center animate-fade-in-up">
+            <div className="text-center space-y-3">
+              <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
+              <p className="text-neutral-600">Creating your goal...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Input Phase */}
+        {phase === 'input' && (
+          <div className="space-y-6 animate-fade-in-up">
+            {/* Question 1: Goal */}
+            <div className="glass-strong rounded-2xl p-6 space-y-3">
+              <label className="block">
+                <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
+                  1. Your Goal
                 </span>
+                <p className="text-neutral-800 font-medium mt-1 mb-3">
+                  What do you want to be true in the next few months?
+                </p>
+                <Input
+                  value={form.goal}
+                  onChange={(e) => setForm(f => ({ ...f, goal: e.target.value }))}
+                  placeholder="e.g., Run 3 times a week consistently"
+                  maxLength={INPUT_LIMITS.GOAL_MAX_LENGTH}
+                />
+              </label>
+            </div>
+
+            {/* Question 2: Why */}
+            <div className="glass-strong rounded-2xl p-6 space-y-3">
+              <label className="block">
+                <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
+                  2. Your Why
+                </span>
+                <p className="text-neutral-800 font-medium mt-1 mb-3">
+                  Why does this matter now?
+                </p>
+                <Input
+                  value={form.why}
+                  onChange={(e) => setForm(f => ({ ...f, why: e.target.value }))}
+                  placeholder="e.g., So I can keep up with my kids and feel energized"
+                  maxLength={INPUT_LIMITS.WHY_MAX_LENGTH}
+                />
+              </label>
+            </div>
+
+            {/* Question 3: Boundaries */}
+            <div className="glass-strong rounded-2xl p-6 space-y-4">
+              <div>
+                <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
+                  3. Your Boundaries
+                </span>
+                <p className="text-neutral-800 font-medium mt-1 mb-3">
+                  What must this not cost you?
+                </p>
               </div>
-              <Slider
-                min={2}
-                max={30}
-                value={contract.minimum_action.minutes}
-                onChange={(v) => setContract(c => ({ 
-                  ...c, 
-                  minimum_action: { ...c.minimum_action, minutes: v }
-                }))}
-                label="Duration in minutes"
+              <div className="flex flex-wrap gap-2">
+                {BOUNDARY_OPTIONS.map(chip => (
+                  <button
+                    key={chip}
+                    onClick={() => toggleBoundary(chip)}
+                    className={`
+                      px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
+                      ${form.boundaryChips.includes(chip)
+                        ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
+                        : 'glass-subtle text-neutral-600 hover:bg-white/60 hover:-translate-y-0.5'
+                      }
+                    `}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+              <Input
+                value={form.customBoundary}
+                onChange={(e) => setForm(f => ({ ...f, customBoundary: e.target.value }))}
+                placeholder="Or add your own boundary..."
+                maxLength={INPUT_LIMITS.CUSTOM_BOUNDARY_MAX_LENGTH}
               />
             </div>
+
+            {/* Question 4: Frequency */}
+            <div className="glass-strong rounded-2xl p-6 space-y-4">
+              <div>
+                <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
+                  4. Frequency
+                </span>
+                <p className="text-neutral-800 font-medium mt-1 mb-3">
+                  How often do you want to work on this?
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map(freq => (
+                  <button
+                    key={freq}
+                    onClick={() => setForm(f => ({ ...f, frequencyPerWeek: freq }))}
+                    className={`
+                      px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
+                      ${form.frequencyPerWeek === freq
+                        ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
+                        : 'glass-subtle text-neutral-600 hover:bg-white/60 hover:-translate-y-0.5'
+                      }
+                    `}
+                  >
+                    {freq}x / week
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Question 5: Optional Minimum Action */}
+            <div className="glass-strong rounded-2xl overflow-hidden">
+              <button
+                onClick={() => setShowOptionalSection(!showOptionalSection)}
+                className="w-full p-6 flex items-center justify-between text-left hover:bg-white/30 transition-colors"
+              >
+                <div>
+                  <span className="text-xs text-neutral-400 uppercase tracking-wider font-medium">
+                    5. First Step (Optional)
+                  </span>
+                  <p className="text-neutral-600 mt-1">
+                    If you already know a tiny first step, add it. If not, we&apos;ll help you find one.
+                  </p>
+                </div>
+                <ChevronDown 
+                  className={`w-5 h-5 text-neutral-400 transition-transform duration-300 ${
+                    showOptionalSection ? 'rotate-180' : ''
+                  }`} 
+                />
+              </button>
+              
+              {showOptionalSection && (
+                <div className="px-6 pb-6 space-y-4 animate-fade-in-up">
+                  <Input
+                    value={form.minimumAction}
+                    onChange={(e) => setForm(f => ({ ...f, minimumAction: e.target.value }))}
+                    placeholder="e.g., Put on running shoes and step outside"
+                    maxLength={INPUT_LIMITS.MINIMUM_ACTION_MAX_LENGTH}
+                  />
+                  <div className="glass-quiet rounded-xl p-4">
+                    <div className="flex justify-between mb-3">
+                      <span className="text-sm text-neutral-600">How long?</span>
+                      <span className="text-sm font-medium text-teal-600 tabular-nums">
+                        {form.minimumMinutes} min
+                      </span>
+                    </div>
+                    <Slider
+                      min={2}
+                      max={30}
+                      value={form.minimumMinutes}
+                      onChange={(v) => setForm(f => ({ ...f, minimumMinutes: v }))}
+                      label="Duration in minutes"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Error Display */}
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm animate-fade-in-up">
                 {error}
               </div>
             )}
-          </div>
-        ) : (
-          <div className="glass-strong rounded-2xl p-6 space-y-4">
-            <Input
-              value={step === 'goal' ? contract.goal : contract.why}
-              onChange={(e) => setContract(c => ({ 
-                ...c, 
-                [step]: e.target.value 
-              }))}
-              placeholder={config.placeholder}
-              maxLength={step === 'goal' ? INPUT_LIMITS.GOAL_MAX_LENGTH : INPUT_LIMITS.WHY_MAX_LENGTH}
-              autoFocus
-            />
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">
-                {error}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Reality check feedback */}
-        <RealityCheckPanel
-          response={realityResponse}
-          loading={checkLoading}
-          onSelectSuggestion={handleSuggestion}
-          onKeepMine={goNext}
-          onContinue={goNext}
-        />
-
-        {/* Actions */}
-        {!realityResponse && !checkLoading && (
-          <div className="flex gap-3">
-            {currentStepIndex > 0 && (
-              <Button onClick={goBack} variant="glass" className="gap-1 px-4">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            )}
-            <Button 
-              onClick={runCheck} 
-              className="flex-1 gap-2" 
-              disabled={!isValid()}
+            {/* Submit Button */}
+            <Button
+              onClick={handleSubmit}
+              size="lg"
+              className="w-full gap-2"
+              disabled={!isFormValid()}
             >
-              Continue <ArrowRight className="w-4 h-4" />
+              Check my goal <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         )}
-      </div>
-    );
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="max-w-lg w-full space-y-10">
-        {/* Progress */}
-        <ProgressIndicator steps={steps} currentIndex={currentStepIndex} />
-        
-        {/* Content */}
-        {renderStep()}
       </div>
     </div>
   );

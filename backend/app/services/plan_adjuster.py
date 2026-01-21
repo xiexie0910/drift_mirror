@@ -1,5 +1,5 @@
-from typing import Tuple, Optional
-from app.models import Plan, Resolution
+from typing import Tuple
+from app.models import Plan
 from app.db import SessionLocal
 
 def compute_plan_adjustment(

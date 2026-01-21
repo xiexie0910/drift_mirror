@@ -3,9 +3,9 @@ Reality Check Assessor - LLM-powered goal refinement for onboarding wizard.
 """
 from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
-import json
 
 from app.services.llm_client import call_ollama, extract_json_from_response
+from app.services.stubs import stub_reality_check
 
 # ============================================================
 # Pydantic Schemas
@@ -47,7 +47,7 @@ class RealityCheckResponse(BaseModel):
     @field_validator('rewrite_options')
     @classmethod
     def limit_rewrites(cls, v):
-        return v[:3]
+        return v[:1]
     
     @field_validator('clarifying_questions')
     @classmethod
@@ -58,19 +58,32 @@ class RealityCheckResponse(BaseModel):
 # Prompt Templates
 # ============================================================
 
-SYSTEM_PROMPT = """You are a goal clarity assessor. Your job is to help users write clear, specific, actionable goals.
+SYSTEM_PROMPT = """You are a goal clarity detector. Your ONLY job is to determine if the user's input is CLEAR and SINGULAR enough.
 
-RULES:
-- Keep tone neutral, practical, non-judgmental
-- No therapy, no diagnosis, no medical/mental-health advice
-- Focus ONLY on clarity, specificity, and achievability
-- Do NOT generate long plans - only refine the current input
-- Respect any boundaries the user has set (no 80-hour weeks, etc.)
-- Always provide at least 2 rewrite options when needs_refinement
-- Keep rewrites short and actionable
+CLARITY RULES:
+1. ONE THING ONLY: The input must describe exactly ONE goal/action, not multiple. "Exercise and read more" = needs_refinement.
+2. SPECIFIC: Must be concrete and observable. "Be better" = needs_refinement. "Run 3x per week" = ok.
+3. MEASURABLE: You could verify if it happened. "Improve my health" = needs_refinement. "Lose 10 pounds" = ok.
+4. NOT A FEELING: Must be an action or outcome, not an emotion. "Feel happier" = needs_refinement.
+5. ACTIONABLE: Something the user can actually DO. "Be lucky" = needs_refinement.
 
-PHILOSOPHY: "Start before you think about the value. Value comes after you start. Don't wait."
-"""
+DETECTION SIGNALS FOR needs_refinement:
+- Contains "and" or commas listing multiple things
+- Uses vague words: better, more, improve, stuff, things, try, maybe, kind of
+- Describes a feeling rather than an action
+- Is shorter than 5 words
+- Contains no concrete nouns (what, when, how much)
+- Is a category rather than a specific instance ("exercise" vs "run 2 miles")
+
+WHEN SUGGESTING REWRITES:
+- Provide exactly 1 rewrite_option when needs_refinement
+- The rewrite should be a COMPLETE, ready-to-use replacement
+- best_guess_refinement should be your single best rewrite of their input
+
+RESPONSE FORMAT: Always return valid JSON with this exact structure:
+{"status": "ok" or "needs_refinement", "issues": ["one short issue max 10 words"], "rewrite_options": ["one complete rewrite"], "clarifying_questions": ["one question if helpful"], "best_guess_refinement": "your best single rewrite or null if ok", "confidence": 0.0-1.0}
+
+Keep tone neutral and helpful. Never judge. Just detect clarity."""
 
 def get_step_prompt(step: str, user_input: dict, context: GoalContractSoFar) -> str:
     context_str = ""
@@ -86,171 +99,109 @@ def get_step_prompt(step: str, user_input: dict, context: GoalContractSoFar) -> 
     
     if step == "goal":
         input_text = user_input.get("goal", "")
-        return f"""User is defining their goal (outcome).
+        return f"""STEP: Goal Definition
 {context_str}
-User wrote: "{input_text}"
+USER INPUT: "{input_text}"
 
-Assess if this is a clear, specific, measurable outcome (not a feeling).
-Bad examples: "be happier", "get better at stuff", "improve"
-Good examples: "Run a 5K", "Read 12 books this year", "Learn basic Spanish conversation"
+CLARITY CHECK:
+1. Is this exactly ONE goal (not multiple goals joined by "and")?
+2. Is it specific and observable (not vague like "be better")?
+3. Is it measurable (you could verify if it happened)?
+4. Is it an action/outcome (not a feeling like "feel happier")?
 
-Return JSON:
-{{"status": "ok" or "needs_refinement", "issues": ["short issue"], "rewrite_options": ["suggestion1", "suggestion2"], "clarifying_questions": ["optional question"], "best_guess_refinement": "your best rewrite or null", "confidence": 0.0-1.0}}"""
+NEEDS REFINEMENT IF:
+- Multiple goals: "exercise and eat healthy" → pick ONE
+- Too vague: "improve", "be better", "get healthier"
+- Just a category: "exercise" → needs specifics (what, how often)
+- A feeling: "be happier", "feel confident"
+- Too short (under 5 words)
+
+EXAMPLES:
+❌ "Be healthier" → ✅ "Walk 30 minutes every morning"
+❌ "Learn stuff" → ✅ "Complete one Python course by March"
+❌ "Exercise and read more" → ✅ "Run 3 times per week" (pick ONE)
+❌ "Get better at guitar" → ✅ "Practice guitar 20 minutes daily"
+
+Return JSON with status, issues, rewrite_options (1 complete alternative), best_guess_refinement, confidence."""
 
     elif step == "why":
         input_text = user_input.get("why", "")
-        return f"""User is explaining why their goal matters.
+        return f"""STEP: Why This Matters
 {context_str}
-User wrote: "{input_text}"
+USER INPUT: "{input_text}"
 
-Assess if this is a genuine, personal reason (not generic or performative).
-Bad examples: "because I should", "everyone says so", "to impress people"
-Good examples: "To keep up with my kids", "To feel capable again", "To prove I can finish something"
+CLARITY CHECK:
+1. Is this a personal, genuine reason (not generic)?
+2. Does it connect to something they actually care about?
+3. Is it specific enough to motivate action?
 
-Return JSON:
-{{"status": "ok" or "needs_refinement", "issues": ["short issue"], "rewrite_options": ["suggestion1", "suggestion2"], "clarifying_questions": ["optional question"], "best_guess_refinement": "your best rewrite or null", "confidence": 0.0-1.0}}"""
+NEEDS REFINEMENT IF:
+- Generic: "because I should", "it's important", "everyone does it"
+- External pressure only: "my doctor said so", "to impress others"
+- Too vague: "to be better", "for my health"
+- Too short (under 5 words)
+
+EXAMPLES:
+❌ "To be healthier" → ✅ "So I can play with my kids without getting winded"
+❌ "Because I should" → ✅ "To prove to myself I can stick with something"
+❌ "For my career" → ✅ "To get promoted to senior developer by next year"
+
+Return JSON with status, issues, rewrite_options (1 complete alternative), best_guess_refinement, confidence."""
 
     elif step == "boundaries":
         chips = user_input.get("chips", [])
         custom = user_input.get("custom", "")
-        return f"""User is setting boundaries (what they won't sacrifice).
+        return f"""STEP: Boundaries (What They Won't Sacrifice)
 {context_str}
-Selected chips: {chips}
+Selected preset boundaries: {chips}
 Custom boundary: "{custom}"
 
-Assess if boundaries are clear and protect something meaningful.
-If no boundaries selected, gently suggest they pick at least one.
+CLARITY CHECK:
+1. Has at least one boundary been set?
+2. Are boundaries specific (not vague)?
 
-Return JSON:
-{{"status": "ok" or "needs_refinement", "issues": ["short issue"], "rewrite_options": ["suggestion1", "suggestion2"], "clarifying_questions": ["optional question"], "best_guess_refinement": "suggested boundary or null", "confidence": 0.0-1.0}}"""
+NEEDS REFINEMENT IF:
+- No boundaries selected AND no custom boundary
+- Custom boundary is vague: "don't overdo it"
+
+EXAMPLES:
+❌ No boundaries → ✅ Select "No burnout" or "No losing sleep"
+❌ "Be balanced" → ✅ "No working past 8pm"
+
+If they have at least one clear boundary, status should be "ok".
+
+Return JSON with status, issues, rewrite_options, best_guess_refinement, confidence."""
 
     elif step == "minimum_action":
         text = user_input.get("text", "")
-        minutes = user_input.get("minutes")
-        return f"""User is defining their minimum action (smallest step on a bad day).
+        minutes = user_input.get("minutes", 0)
+        return f"""STEP: Minimum Action (Smallest Step on a Bad Day)
 {context_str}
-Action: "{text}"
-Minutes: {minutes}
+USER INPUT: "{text}"
+MINUTES: {minutes}
 
-Assess if this is truly minimal (2-10 minutes), specific, and doable even when tired/stressed.
-Bad examples: "exercise for an hour", "finish the whole chapter", "do my best"
-Good examples: "Put on running shoes and step outside", "Read one page", "Write one sentence"
+CLARITY CHECK:
+1. Is this ONE specific physical action (not multiple)?
+2. Is it truly minimal (doable in 2-10 minutes)?
+3. Could they do it even when exhausted, sick, or stressed?
+4. Is it concrete (observable first step)?
 
-Return JSON:
-{{"status": "ok" or "needs_refinement", "issues": ["short issue"], "rewrite_options": ["suggestion1", "suggestion2"], "clarifying_questions": ["optional question"], "best_guess_refinement": "your best rewrite or null", "confidence": 0.0-1.0}}"""
+NEEDS REFINEMENT IF:
+- Multiple actions: "read and take notes" → pick ONE
+- Too big: "work out for an hour", "finish the chapter"
+- Too vague: "do something", "try", "work on it"
+- Not physical/observable: "think about it", "feel motivated"
+- Minutes > 15 (too ambitious for a bad day)
+
+EXAMPLES:
+❌ "Exercise" → ✅ "Put on running shoes and step outside"
+❌ "Read a chapter" → ✅ "Open the book and read one page"
+❌ "Study Spanish" → ✅ "Open Duolingo and complete one lesson"
+❌ "Work on project" → ✅ "Open the file and write one sentence"
+
+Return JSON with status, issues, rewrite_options (1 complete alternative), best_guess_refinement, confidence."""
 
     return ""
-
-# ============================================================
-# Fallback Stub (Demo-Safe)
-# ============================================================
-
-def stub_reality_check(step: str, user_input: dict, context: GoalContractSoFar) -> RealityCheckResponse:
-    """Deterministic fallback when LLM is unavailable."""
-    
-    # Get the input text based on step
-    if step == "goal":
-        text = user_input.get("goal", "")
-    elif step == "why":
-        text = user_input.get("why", "")
-    elif step == "boundaries":
-        chips = user_input.get("chips", [])
-        custom = user_input.get("custom", "")
-        text = custom if custom else " ".join(chips)
-    elif step == "minimum_action":
-        text = user_input.get("text", "")
-    else:
-        text = ""
-    
-    # Simple heuristics
-    is_too_short = len(text.strip()) < 10
-    is_too_vague = any(word in text.lower() for word in ["better", "more", "improve", "stuff", "things"])
-    
-    if step == "boundaries":
-        chips = user_input.get("chips", [])
-        if len(chips) == 0 and not user_input.get("custom"):
-            return RealityCheckResponse(
-                status="needs_refinement",
-                issues=["No boundaries selected"],
-                rewrite_options=["Try selecting at least one boundary", "Consider 'No burnout' or 'No losing sleep'"],
-                clarifying_questions=["What would make this goal feel too costly?"],
-                confidence=0.8,
-                debug={"model_used": "stub", "fallback_used": True}
-            )
-        return RealityCheckResponse(
-            status="ok",
-            issues=[],
-            rewrite_options=[],
-            clarifying_questions=[],
-            confidence=0.9,
-            debug={"model_used": "stub", "fallback_used": True}
-        )
-    
-    if is_too_short:
-        templates = {
-            "goal": {
-                "issues": ["Goal is very brief"],
-                "rewrites": ["Try: 'Run a 5K in 3 months'", "Try: 'Read one book per month'"],
-                "question": "What specific outcome would success look like?"
-            },
-            "why": {
-                "issues": ["Reason is quite short"],
-                "rewrites": ["Try: 'To keep up with my kids'", "Try: 'To feel capable again'"],
-                "question": "What changes when you achieve this?"
-            },
-            "minimum_action": {
-                "issues": ["Action could be more specific"],
-                "rewrites": ["Try: 'Put on shoes and walk to the door'", "Try: 'Open the book and read one paragraph'"],
-                "question": "What's the very first physical thing you'd do?"
-            }
-        }
-        t = templates.get(step, templates["goal"])
-        return RealityCheckResponse(
-            status="needs_refinement",
-            issues=t["issues"],
-            rewrite_options=t["rewrites"],
-            clarifying_questions=[t["question"]],
-            confidence=0.7,
-            debug={"model_used": "stub", "fallback_used": True}
-        )
-    
-    if is_too_vague:
-        templates = {
-            "goal": {
-                "issues": ["Goal could be more specific"],
-                "rewrites": [f"Instead of '{text[:30]}...', try a measurable outcome", "What would you show someone to prove success?"],
-                "question": "How will you know when you've achieved this?"
-            },
-            "why": {
-                "issues": ["Reason could be more personal"],
-                "rewrites": ["Connect it to something you care about", "What changes in your daily life?"],
-                "question": "What happens if you don't do this?"
-            },
-            "minimum_action": {
-                "issues": ["Action seems too big for a bad day"],
-                "rewrites": ["Cut it in half", "What if you only had 2 minutes?"],
-                "question": "Could you do this while exhausted?"
-            }
-        }
-        t = templates.get(step, templates["goal"])
-        return RealityCheckResponse(
-            status="needs_refinement",
-            issues=t["issues"],
-            rewrite_options=t["rewrites"],
-            clarifying_questions=[t["question"]],
-            confidence=0.6,
-            debug={"model_used": "stub", "fallback_used": True}
-        )
-    
-    # Input seems okay
-    return RealityCheckResponse(
-        status="ok",
-        issues=[],
-        rewrite_options=[],
-        clarifying_questions=[],
-        confidence=0.8,
-        debug={"model_used": "stub", "fallback_used": True}
-    )
 
 # ============================================================
 # Main Reality Check Function
@@ -264,6 +215,8 @@ async def run_reality_check(
 ) -> RealityCheckResponse:
     """
     Run LLM reality check with timeout, retry, and fallback.
+    Detects if input is clear, singular, and actionable.
+    Suggests specific rewrites when refinement is needed.
     """
     prompt = get_step_prompt(step, user_input, context)
     
@@ -279,22 +232,22 @@ async def run_reality_check(
                     result = RealityCheckResponse(
                         status=parsed.get("status", "ok"),
                         issues=parsed.get("issues", [])[:4],
-                        rewrite_options=parsed.get("rewrite_options", [])[:3],
+                        rewrite_options=parsed.get("rewrite_options", [])[:1],
                         clarifying_questions=parsed.get("clarifying_questions", [])[:2],
                         best_guess_refinement=parsed.get("best_guess_refinement"),
                         confidence=min(1.0, max(0.0, float(parsed.get("confidence", 0.7)))),
                         debug={"model_used": "ollama", "fallback_used": False}
                     )
                     
-                    # Ensure needs_refinement has at least 2 rewrite options
-                    if result.status == "needs_refinement" and len(result.rewrite_options) < 2:
-                        result.rewrite_options.extend(["Consider being more specific", "Try a measurable outcome"])
-                        result.rewrite_options = result.rewrite_options[:3]
+                    # Ensure needs_refinement has exactly 1 rewrite option
+                    if result.status == "needs_refinement" and len(result.rewrite_options) == 0:
+                        result.rewrite_options = ["Be more specific about what you'll do"]
+                    result.rewrite_options = result.rewrite_options[:1]
                     
                     return result
-                except Exception as e:
-                    print(f"Reality check parse error: {e}")
+                except Exception:
+                    # Silent fail - will retry or use fallback
                     continue
     
-    # Fallback to stub
+    # Fallback to stub (deterministic clarity detection)
     return stub_reality_check(step, user_input, context)

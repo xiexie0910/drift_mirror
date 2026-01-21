@@ -8,17 +8,17 @@
  * Security: Input validation, sanitization, error handling
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
 import { Toggle } from '@/components/ui/Toggle';
-import { ArrowLeft, PenLine } from 'lucide-react';
+import { ArrowLeft, PenLine, Loader2 } from 'lucide-react';
 import { api, Dashboard, ApiError } from '@/lib/api';
 import { sanitizeText, validateCheckinForm, INPUT_LIMITS } from '@/lib/validation';
 
-export default function CheckinPage() {
+function CheckinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const goalId = searchParams.get('goal');
@@ -261,5 +261,18 @@ export default function CheckinPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function CheckinPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200">
+        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+      </div>
+    }>
+      <CheckinContent />
+    </Suspense>
   );
 }
