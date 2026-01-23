@@ -15,7 +15,8 @@ async def create_resolution(data: ResolutionCreate, db: Session = Depends(get_db
         mode=data.mode,
         frequency_per_week=data.frequency_per_week,
         min_minutes=data.min_minutes,
-        time_window=data.time_window
+        time_window=data.time_window,
+        minimum_action_text=data.minimum_action_text
     )
     db.add(resolution)
     db.commit()

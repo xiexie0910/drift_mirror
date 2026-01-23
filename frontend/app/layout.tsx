@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { MochiMascot } from '@/components/MochiMascot';
+import { CelebrationProvider } from '@/components/CelebrationProvider';
 
 /**
  * DriftMirror Root Layout
@@ -29,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} overflow-x-hidden`}>
       <body className="min-h-screen font-sans text-neutral-800 antialiased ambient-bg overflow-y-auto overflow-x-hidden">
+        <CelebrationProvider>
         {/* Floating orbs for 3D depth - MORE teal */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
           {/* Large teal orb top-right */}
@@ -111,6 +114,10 @@ export default function RootLayout({
         <div className="relative z-10">
           {children}
         </div>
+        
+        {/* Mochi Mascot - friendly companion */}
+        <MochiMascot />
+        </CelebrationProvider>
       </body>
     </html>
   );

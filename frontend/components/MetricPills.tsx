@@ -39,45 +39,44 @@ export function MetricPills({ metrics }: MetricPillsProps) {
   const driftStyle = getDriftState(metrics.drift_score);
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-4 gap-2">
       {/* Completion Rate */}
-      <div className="glass-subtle rounded-xl p-4 transition-all duration-300 hover:scale-[1.02]">
-        <p className="text-xs text-teal-600 font-medium uppercase tracking-wider mb-2">Completion</p>
-        <p className="text-2xl font-semibold text-neutral-800 tabular-nums">
+      <div className="glass-subtle rounded-xl p-3 transition-all duration-300 hover:scale-[1.02]">
+        <p className="text-[10px] text-teal-600 font-medium uppercase tracking-wider mb-1">Done</p>
+        <p className="text-lg font-semibold text-neutral-800 tabular-nums">
           {(metrics.completion_rate * 100).toFixed(0)}
-          <span className="text-sm text-neutral-400 ml-0.5">%</span>
+          <span className="text-xs text-neutral-400">%</span>
         </p>
       </div>
       
       {/* Check-ins */}
-      <div className="glass-subtle rounded-xl p-4 transition-all duration-300 hover:scale-[1.02]">
-        <p className="text-xs text-teal-600 font-medium uppercase tracking-wider mb-2">Check-ins</p>
-        <p className="text-2xl font-semibold text-neutral-800 tabular-nums">
+      <div className="glass-subtle rounded-xl p-3 transition-all duration-300 hover:scale-[1.02]">
+        <p className="text-[10px] text-teal-600 font-medium uppercase tracking-wider mb-1">Streak</p>
+        <p className="text-lg font-semibold text-neutral-800 tabular-nums">
           {metrics.streak}
         </p>
       </div>
       
       {/* Friction */}
-      <div className="glass-subtle rounded-xl p-4 transition-all duration-300 hover:scale-[1.02]">
-        <p className="text-xs text-teal-600 font-medium uppercase tracking-wider mb-2">Friction</p>
-        <p className="text-2xl font-semibold text-neutral-800 tabular-nums">
+      <div className="glass-subtle rounded-xl p-3 transition-all duration-300 hover:scale-[1.02]">
+        <p className="text-[10px] text-teal-600 font-medium uppercase tracking-wider mb-1">Effort</p>
+        <p className="text-lg font-semibold text-neutral-800 tabular-nums">
           {metrics.avg_friction.toFixed(1)}
-          <span className="text-sm text-neutral-400 ml-0.5">/3</span>
         </p>
       </div>
       
       {/* Drift Score */}
       <div className={`
-        rounded-xl p-4 
+        rounded-xl p-3 
         backdrop-blur-md border 
         shadow-lg
         transition-all duration-300 hover:scale-[1.02]
         ${driftStyle.bg} ${driftStyle.border} ${driftStyle.glow}
       `}>
-        <p className={`text-xs font-medium uppercase tracking-wider mb-2 ${driftStyle.text}`}>Drift</p>
-        <p className={`text-2xl font-semibold tabular-nums ${driftStyle.text}`}>
+        <p className={`text-[10px] font-medium uppercase tracking-wider mb-1 ${driftStyle.text}`}>Drift</p>
+        <p className={`text-lg font-semibold tabular-nums ${driftStyle.text}`}>
           {(metrics.drift_score * 100).toFixed(0)}
-          <span className="text-sm opacity-60 ml-0.5">%</span>
+          <span className="text-xs opacity-60">%</span>
         </p>
       </div>
     </div>

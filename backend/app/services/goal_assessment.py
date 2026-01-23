@@ -167,8 +167,7 @@ class AssessmentResponse(BaseModel):
     # Rewrites (only 1 per field that needs refinement)
     rewrite_options: List[RewriteOption] = Field(default_factory=list)
     
-    # Deterministic next-step recommendations
-    needs_resource_discovery: bool = Field(default=False, description="Should invoke Agent B for resources")
+    # UI recommendations
     suggest_show_rewrite_options: bool = Field(default=False, description="Should show rewrite UI")
     
     # Optional refinement
@@ -277,7 +276,6 @@ Return valid JSON only:
   "flags": {"vague_outcome": false, "too_broad": false, "multiple_goals": false, "unknown_actions": true, "boundary_missing": false, "feeling_not_action": false, "action_too_big": false},
   "issues": ["One short issue description"],
   "rewrite_options": [{"text": "Your clear, specific, grammatically correct rewrite", "field": "goal", "rationale": "Added frequency and made it measurable"}],
-  "needs_resource_discovery": true,
   "suggest_show_rewrite_options": true,
   "best_guess_goal": "Your best rewrite of their goal",
   "confidence": 0.85
@@ -397,12 +395,6 @@ async def assess_questionnaire(
                                     rationale=str(opt.get("rationale", ""))
                                 ))
                     
-                    # Determine needs_resource_discovery
-                    needs_resource = bool(parsed.get("needs_resource_discovery", False))
-                    # Also trigger if minimum_action is empty and unknown_actions flag
-                    if flags.unknown_actions or (not payload.minimum_action or not payload.minimum_action.text):
-                        needs_resource = True
-                    
                     result = AssessmentResponse(
                         status=parsed.get("status", "ok"),
                         goal_type=goal_type,
@@ -410,7 +402,6 @@ async def assess_questionnaire(
                         flags=flags,
                         issues=parsed.get("issues", [])[:5],
                         rewrite_options=rewrite_options,
-                        needs_resource_discovery=needs_resource,
                         suggest_show_rewrite_options=bool(parsed.get("suggest_show_rewrite_options", False)),
                         best_guess_goal=parsed.get("best_guess_goal") or (corrected_goal if goal_was_corrected else None),
                         confidence=min(1.0, max(0.0, float(parsed.get("confidence", 0.7)))),

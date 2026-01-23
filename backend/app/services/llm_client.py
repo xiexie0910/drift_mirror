@@ -1,21 +1,33 @@
 import httpx
 import json
 import os
+import re
 import logging
+from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from project root (parent of backend folder)
+env_path = Path(__file__).resolve().parents[3] / ".env"
+load_dotenv(env_path)
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# LLM Provider: "ollama", "gemini", or "mock" (default: mock for instant dev experience)
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")
+
+# Ollama settings (for local dev)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma2:2b")
-OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "30"))
-# Context window size - Gemma2 supports up to 8K
-OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "8192"))
-# Maximum characters in prompt to prevent context overflow
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))  # Increased for slow local models
+OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
+
+# Gemini settings (for production)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
+# Maximum characters in prompt
 MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "6000"))
 
 
@@ -44,50 +56,114 @@ def truncate_prompt(prompt: str, system: str = "", max_chars: int = MAX_PROMPT_C
     return truncated
 
 
-async def call_ollama(prompt: str, system: str = "") -> Optional[str]:
+async def call_gemini(prompt: str, system: str = "") -> Optional[str]:
     """
-    Call Ollama API. Returns None if unavailable.
-    Automatically truncates prompts to prevent context overflow.
+    Call Google Gemini API. Returns None if unavailable.
     """
-    # Truncate prompt if too long
+    if not GEMINI_API_KEY:
+        logger.warning("GEMINI_API_KEY not set")
+        return None
+    
     safe_prompt = truncate_prompt(prompt, system)
+    full_prompt = f"{system}\n\n{safe_prompt}" if system else safe_prompt
     
     try:
-        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(
-                f"{OLLAMA_BASE_URL}/api/generate",
+                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}",
                 json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": safe_prompt,
-                    "system": system,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.3,
-                        "num_predict": 500,
-                        "num_ctx": OLLAMA_NUM_CTX,  # Increase context window
+                    "contents": [{"parts": [{"text": full_prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.4,
+                        "maxOutputTokens": 2048,
+                        "responseMimeType": "application/json"
                     }
                 }
             )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Extract text from Gemini response structure
+                candidates = data.get("candidates", [])
+                if candidates:
+                    content = candidates[0].get("content", {})
+                    parts = content.get("parts", [])
+                    if parts:
+                        return parts[0].get("text", "")
+            else:
+                logger.warning(f"Gemini error {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        logger.warning(f"Gemini error: {type(e).__name__}: {e}")
+    return None
+
+
+async def call_ollama(prompt: str, system: str = "", json_mode: bool = True) -> Optional[str]:
+    """
+    Call LLM API (Ollama, Gemini, or Mock based on LLM_PROVIDER env var).
+    Returns None if unavailable (triggers stub fallbacks).
+    
+    Args:
+        prompt: The user prompt
+        system: System prompt (optional)
+        json_mode: If True, forces JSON output format (default: True)
+    """
+    # Mock mode: return None to trigger stub fallbacks (instant responses)
+    if LLM_PROVIDER == "mock":
+        logger.info("Using mock mode - returning None to trigger stubs")
+        return None
+    
+    # Use Gemini if configured
+    if LLM_PROVIDER == "gemini":
+        logger.info(f"Using Gemini: model={GEMINI_MODEL}")
+        return await call_gemini(prompt, system)
+    
+    # Default: Ollama
+    safe_prompt = truncate_prompt(prompt, system)
+    
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(OLLAMA_TIMEOUT)) as client:
+            request_body = {
+                "model": OLLAMA_MODEL,
+                "prompt": safe_prompt,
+                "system": system,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,  # Lower = faster, more focused
+                    "num_predict": 1024, # Enough for complete JSON responses
+                    "num_ctx": 4096,     # Reduced context for speed
+                    "top_k": 20,         # Limit token choices for speed
+                    "top_p": 0.9,
+                }
+            }
+            
+            if json_mode:
+                request_body["format"] = "json"
+            
+            logger.info(f"Calling Ollama: model={OLLAMA_MODEL}, json_mode={json_mode}")
+            
+            response = await client.post(
+                f"{OLLAMA_BASE_URL}/api/generate",
+                json=request_body
+            )
+            
             if response.status_code == 200:
                 data = response.json()
                 return data.get("response", "")
             else:
-                # Log error for debugging
-                error_text = response.text[:200] if response.text else "No error text"
-                logger.warning(f"Ollama error {response.status_code}: {error_text}")
+                logger.warning(f"Ollama error {response.status_code}: {response.text[:200]}")
     except httpx.TimeoutException:
-        logger.debug("Ollama timeout - using fallback")
+        logger.warning(f"Ollama timeout after {OLLAMA_TIMEOUT}s")
     except Exception as e:
-        # Silent fail - caller will use fallback
-        logger.debug(f"Ollama error: {type(e).__name__}")
+        logger.warning(f"Ollama error: {type(e).__name__}: {e}")
     return None
 
+
 def extract_json_from_response(text: str) -> Optional[dict]:
-    """Extract JSON from LLM response, handling markdown blocks."""
+    """Extract JSON from LLM response, handling markdown blocks and common LLM mistakes."""
     if not text:
         return None
     
-    # Try to find JSON in code blocks
+    # Try to find JSON in code blocks first
     if "```json" in text:
         start = text.find("```json") + 7
         end = text.find("```", start)
@@ -101,12 +177,20 @@ def extract_json_from_response(text: str) -> Optional[dict]:
     
     # Try to find JSON object
     try:
-        # Find first { and last }
         start = text.find("{")
         end = text.rfind("}") + 1
         if start >= 0 and end > start:
-            return json.loads(text[start:end])
-    except json.JSONDecodeError:
-        pass
+            json_str = text[start:end]
+            
+            # Fix common LLM JSON mistakes (single quotes instead of double)
+            json_str = re.sub(r"':", '":', json_str)
+            json_str = re.sub(r":'", ':"', json_str)
+            json_str = json_str.replace("'}", '"}')
+            json_str = json_str.replace("',", '",')
+            json_str = json_str.replace("']", '"]')
+            
+            return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        logger.debug(f"JSON parse failed: {e}")
     
     return None

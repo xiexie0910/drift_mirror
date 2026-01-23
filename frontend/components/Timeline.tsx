@@ -1,12 +1,10 @@
 import { Checkin } from '@/lib/api';
+import { Check, X } from 'lucide-react';
 
 /**
  * Timeline Component
  * 
- * Calm Futurism Design
- * - Glass cards for each check-in
- * - Subtle teal accents
- * - Clean visual hierarchy
+ * Compact check-in history with minimum action status
  */
 
 interface TimelineProps {
@@ -20,56 +18,58 @@ export function Timeline({ checkins }: TimelineProps) {
   };
 
   const getFrictionLabel = (friction: number) => {
-    if (friction === 1) return 'Low';
+    if (friction === 1) return 'Easy';
     if (friction === 2) return 'Medium';
-    return 'High';
+    return 'Hard';
   };
 
   return (
-    <div className="space-y-3">
-      {checkins.map((checkin, index) => (
-        <div 
-          key={checkin.id} 
-          className="glass-subtle rounded-xl p-4 transition-all duration-300 hover:scale-[1.01] hover:shadow-lg"
-          style={{ animationDelay: `${index * 0.05}s` }}
-        >
-          <div className="flex items-start gap-4">
-            {/* Status indicator with glow */}
-            <div className={`
-              w-3 h-3 mt-1.5 rounded-full flex-shrink-0 transition-all
-              ${checkin.completed 
-                ? 'bg-gradient-to-r from-teal-400 to-teal-500 shadow-lg shadow-teal-500/30' 
-                : 'bg-neutral-300/50'}
-            `} />
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-neutral-800 truncate">
-                  {checkin.actual}
-                </p>
-                <span className="text-xs text-teal-600/70 shrink-0 tabular-nums font-medium">
-                  {formatDate(checkin.created_at)}
-                </span>
+    <div className="space-y-2">
+      {checkins.map((checkin, index) => {
+        const didMinimum = checkin.did_minimum_action ?? checkin.completed;
+        
+        return (
+          <div 
+            key={checkin.id} 
+            className="glass-subtle rounded-xl p-3 transition-all hover:shadow-md"
+            style={{ animationDelay: `${index * 0.05}s` }}
+          >
+            <div className="flex items-center gap-3">
+              {/* Status icon */}
+              <div className={`
+                w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0
+                ${didMinimum 
+                  ? 'bg-teal-100 text-teal-600' 
+                  : 'bg-neutral-100 text-neutral-400'}
+              `}>
+                {didMinimum ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
               </div>
               
-              <p className="text-xs text-neutral-500 truncate mt-1.5">
-                Planned: {checkin.planned}
-              </p>
-              
-              <div className="flex items-center gap-4 mt-3 text-xs">
-                <span className="px-2 py-1 glass-quiet rounded-lg text-neutral-600">
-                  Friction: {getFrictionLabel(checkin.friction)}
-                </span>
-                {checkin.blocker && (
-                  <span className="text-neutral-400 truncate">
-                    {checkin.blocker.slice(0, 30)}...
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-neutral-700">
+                    {didMinimum ? 'Did minimum' : 'Missed'}
+                    {checkin.extra_done && <span className="text-teal-600"> +extra</span>}
+                  </p>
+                  <span className="text-xs text-neutral-400 shrink-0">
+                    {formatDate(checkin.created_at)}
                   </span>
-                )}
+                </div>
+                
+                <div className="flex items-center gap-2 mt-1 text-xs text-neutral-500">
+                  <span>{getFrictionLabel(checkin.friction)}</span>
+                  {checkin.blocker && (
+                    <>
+                      <span>•</span>
+                      <span className="truncate">{checkin.blocker.slice(0, 25)}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

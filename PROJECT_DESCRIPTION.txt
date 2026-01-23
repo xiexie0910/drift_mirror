@@ -1,0 +1,529 @@
+================================================================================
+                              DRIFTMIRROR
+                    Goal Tracking & Behavioral Reflection App
+================================================================================
+
+Project Overview
+--------------------------------------------------------------------------------
+DriftMirror is a minimal goal-tracking application with LLM-powered reflection 
+and autonomous plan adaptation. Unlike traditional goal apps that focus on 
+motivation and gamification, DriftMirror observes actual behavior patterns and 
+automatically adjusts plans based on real data.
+
+Philosophy: "Start before you think about the value. Value comes after you 
+start. Don't wait."
+
+The system helps users track what actually happens, not what they hope will 
+happen. It identifies behavioral drift—the gap between intentions and 
+actions—and provides actionable insights for sustainable habit formation.
+
+
+================================================================================
+                              TECH STACK
+================================================================================
+
+FRONTEND
+--------------------------------------------------------------------------------
+Framework:        Next.js 14.1.0 (React 18.2.0)
+Language:         TypeScript 5.3.3
+Styling:          Tailwind CSS 3.4.1 with custom design system
+Animations:       Framer Motion 11.0.3
+Icons:            Lucide React 0.323.0
+Build Tool:       Next.js built-in (Turbopack/Webpack)
+
+BACKEND
+--------------------------------------------------------------------------------
+Framework:        FastAPI (0.109.0+)
+Language:         Python 3.10+
+Database:         SQLite with SQLAlchemy 2.0+ ORM
+Validation:       Pydantic 2.10.0+
+HTTP Client:      HTTPX 0.26.0+ (for LLM API calls)
+Text Processing:  PySpellChecker 0.8.0+
+
+LLM INTEGRATION
+--------------------------------------------------------------------------------
+Provider:         Ollama (local LLM server)
+Default Model:    Gemma2:2b
+Context Window:   8192 tokens
+Fallback:         Deterministic stub responses when LLM unavailable
+
+DEVELOPMENT TOOLS
+--------------------------------------------------------------------------------
+Package Manager:  npm (frontend), pip (backend)
+Type Checking:    TypeScript (frontend)
+CSS Processing:   PostCSS, Autoprefixer
+Environment:      dotenv for configuration
+
+
+================================================================================
+                           ARCHITECTURE
+================================================================================
+
+PROJECT STRUCTURE
+--------------------------------------------------------------------------------
+drift_mirror/
+├── frontend/                    # Next.js frontend application
+│   ├── app/                     # App Router pages
+│   │   ├── page.tsx            # Home/landing page
+│   │   ├── onboarding/         # Goal setup wizard
+│   │   ├── dashboard/          # Goals overview & detail pages
+│   │   ├── checkin/            # Daily check-in flow
+│   │   ├── mirror/             # Insights & reflection reports
+│   │   ├── globals.css         # Global styles & design tokens
+│   │   └── layout.tsx          # Root layout
+│   ├── components/              # Reusable UI components
+│   │   ├── ui/                 # Base components (Button, Input, Slider)
+│   │   ├── MetricPills.tsx     # Metric display components
+│   │   ├── PlanDiff.tsx        # Plan change visualization
+│   │   └── Timeline.tsx        # Check-in history timeline
+│   ├── lib/                     # Utilities & API client
+│   ├── public/                  # Static assets
+│   └── tailwind.config.ts       # Tailwind configuration
+│
+├── backend/                     # FastAPI backend application
+│   ├── app/
+│   │   ├── main.py             # FastAPI app entry point
+│   │   ├── db.py               # Database configuration
+│   │   ├── models.py           # SQLAlchemy ORM models
+│   │   ├── schemas.py          # Pydantic request/response schemas
+│   │   ├── routes/             # API route handlers
+│   │   │   ├── resolutions.py  # Goal CRUD endpoints
+│   │   │   ├── checkins.py     # Check-in endpoints
+│   │   │   ├── dashboard.py    # Dashboard data aggregation
+│   │   │   ├── demo.py         # Demo data seeding
+│   │   │   └── reality_check.py# LLM-powered goal assessment
+│   │   └── services/           # Business logic layer
+│   │       ├── llm_client.py   # Ollama LLM integration
+│   │       ├── drift.py        # Drift score computation
+│   │       ├── plan_adjuster.py# Automatic plan adjustment
+│   │       ├── reality_check.py# Goal clarity assessment
+│   │       ├── goal_assessment.py# Full goal evaluation
+│   │       ├── resource_discovery.py# Resource/action discovery
+│   │       ├── prompts.py      # LLM prompt templates
+│   │       └── stubs.py        # Fallback responses
+│   ├── requirements.txt         # Python dependencies
+│   └── driftmirror.db          # SQLite database file
+│
+├── .env                         # Environment configuration
+├── .env.example                 # Example environment variables
+└── README.md                    # Quick start guide
+
+
+API ARCHITECTURE
+--------------------------------------------------------------------------------
+The backend follows a layered architecture:
+
+1. ROUTES LAYER (app/routes/)
+   - HTTP request handling
+   - Input validation via Pydantic schemas
+   - Response serialization
+
+2. SERVICES LAYER (app/services/)
+   - Business logic implementation
+   - LLM integration and fallbacks
+   - Drift calculation algorithms
+   - Plan adjustment rules
+
+3. DATA LAYER (app/models.py, app/db.py)
+   - SQLAlchemy ORM models
+   - Database session management
+   - SQLite persistence
+
+
+DATABASE SCHEMA
+--------------------------------------------------------------------------------
+RESOLUTIONS (Goals)
+- id: Primary key
+- title: Goal name (max 255 chars)
+- why: Motivation/purpose
+- mode: personal_growth | productivity
+- frequency_per_week: Target sessions (default: 3)
+- min_minutes: Minimum duration (default: 15)
+- time_window: morning | afternoon | evening | night
+- minimum_action_text: Smallest doable action
+- created_at: Timestamp
+
+PLANS (Versioned goal parameters)
+- id: Primary key
+- resolution_id: Foreign key to Resolution
+- version: Incrementing version number
+- frequency_per_week, min_minutes, time_window
+- recovery_step: Suggested adjustment text
+- created_at: Timestamp
+
+CHECKINS (Daily progress logs)
+- id: Primary key
+- resolution_id: Foreign key
+- planned: What was planned
+- actual: What actually happened
+- blocker: Obstacle description (optional)
+- completed: Boolean success flag
+- did_minimum_action: Did they do minimum?
+- extra_done: Additional accomplishments
+- friction: Difficulty rating (1-3)
+- created_at: Timestamp
+
+SIGNALS (Extracted behavioral patterns)
+- id: Primary key
+- checkin_id: Foreign key
+- signal_type: blocker | friction | gap | success
+- content: Signal description
+- severity: 0.0 to 1.0
+- created_at: Timestamp
+
+MIRROR_REPORTS (LLM-generated insights)
+- id: Primary key
+- resolution_id: Foreign key
+- findings: JSON array of insights
+- counterfactual: "What if you had..." reflection
+- drift_score: 0.0 to 1.0
+- created_at: Timestamp
+
+FEEDBACK (User reactions to reports)
+- id: Primary key
+- mirror_report_id: Foreign key
+- helpful: Boolean
+- created_at: Timestamp
+
+
+================================================================================
+                           CORE FEATURES
+================================================================================
+
+1. GOAL ONBOARDING WIZARD
+--------------------------------------------------------------------------------
+A guided setup flow that helps users define clear, actionable goals:
+
+- Goal Definition: What do you want to achieve?
+- Why It Matters: Personal motivation (not generic)
+- Boundaries: What you won't sacrifice (preset chips + custom)
+- Minimum Action: The smallest step on a bad day
+
+Each step includes LLM-powered "Reality Check" that assesses:
+- Clarity: Is the goal specific and measurable?
+- Scope: Is it one thing, not multiple goals?
+- Actionability: Can it be observed/verified?
+- Boundaries: Are limits set to prevent burnout?
+
+The system suggests rewrites for vague or overly ambitious goals.
+
+
+2. MINIMUM ACTION PHILOSOPHY
+--------------------------------------------------------------------------------
+The core innovation: Define the smallest possible action you can do 
+even on your worst day. Examples:
+
+❌ "Exercise" → ✅ "Put on running shoes and step outside"
+❌ "Read a chapter" → ✅ "Open the book and read one page"
+❌ "Work on project" → ✅ "Open the file and write one sentence"
+
+This removes the friction of "all or nothing" thinking and builds
+consistency through tiny wins.
+
+
+3. CHECK-IN SYSTEM
+--------------------------------------------------------------------------------
+Simplified daily check-ins focused on minimum actions:
+
+1. "Did you do your minimum?" (Yes/No - prominent)
+2. "Did you do more?" (Optional extra accomplishments)
+3. Friction slider (Easy / Some effort / Hard)
+4. Blockers (Only if minimum wasn't done)
+
+Check-ins feed into behavioral pattern detection.
+
+
+4. DRIFT DETECTION
+--------------------------------------------------------------------------------
+The system calculates a "drift score" (0.0 to 1.0) based on:
+
+- Completion Rate: % of check-ins marked complete (40% weight)
+- Average Friction: How hard sessions feel (25% weight)
+- Blocker Frequency: How often obstacles appear (20% weight)
+- Signal Severity: Extracted pattern severity (15% weight)
+
+Drift > 0.4 with 3+ check-ins triggers a Mirror Report.
+
+
+5. MIRROR REPORTS (LLM-Powered Insights)
+--------------------------------------------------------------------------------
+When drift is detected, the system generates reflection reports:
+
+- Pattern Findings: "You tend to skip evening sessions"
+- Evidence: Specific check-in data supporting findings
+- Counterfactual: "What if you had done morning sessions instead?"
+- Drift Level: Visual indicator (Low/Moderate/High)
+
+Users can provide feedback (helpful/not helpful) to improve quality.
+
+
+6. AUTONOMOUS PLAN ADJUSTMENT
+--------------------------------------------------------------------------------
+Based on drift signals, the system automatically suggests changes:
+
+Rule 1: Low completion + high drift → Reduce frequency
+  Example: 5x/week → 4x/week
+
+Rule 2: High friction → Reduce duration
+  Example: 30 min → 25 min
+
+Rule 3: Moderate drift + decent completion → Suggest time shift
+  Example: Morning → Afternoon
+
+Each adjustment creates a new Plan version with a "recovery_step"
+message explaining the rationale.
+
+
+7. UNIFIED DASHBOARD
+--------------------------------------------------------------------------------
+Single view showing all goals with:
+
+- Goal cards with title, why, and metadata
+- Quick metrics: frequency, duration, creation date
+- Click-through to detailed goal pages
+- Floating action button to add new goals
+
+
+================================================================================
+                        DESIGN SYSTEM
+================================================================================
+
+PHILOSOPHY: "CALM FUTURISM"
+--------------------------------------------------------------------------------
+- Subtle depth, not spectacle
+- Material-based surfaces (glass effects)
+- Precision and restraint
+- Teal as the sole accent color (used sparingly)
+
+COLOR PALETTE
+--------------------------------------------------------------------------------
+Primary Accent: Teal
+  - teal-50 through teal-900 (10 shades)
+  - Used for icons, buttons, glows, accents
+
+Neutral: Warm grays
+  - neutral-50 through neutral-900
+  - Used for text, backgrounds, borders
+
+Semantic States:
+  - Complete: Soft green (#6EE7B7)
+  - Attention: Soft amber (#FCD34D)
+  - Concern: Soft rose (#FDA4AF)
+
+GLASS EFFECTS (GLASSMORPHISM)
+--------------------------------------------------------------------------------
+.glass-subtle:   Light blur, minimal opacity
+.glass-strong:   Medium blur, white overlay
+.glass-quiet:    Subtle blur, transparent feel
+.glass-card:     Card-optimized with shadows
+
+All glass surfaces include subtle teal tint in shadows.
+
+TYPOGRAPHY
+--------------------------------------------------------------------------------
+Font Stack: Inter, system fonts
+Mono Font: SF Mono, Monaco, Cascadia Mono
+
+Sizes follow Tailwind defaults with custom line-heights
+for optimal readability.
+
+ANIMATIONS
+--------------------------------------------------------------------------------
+- fade-in: Subtle vertical entrance (0.2s)
+- scale-in: Subtle scale entrance (0.2s)
+- pulse-soft: Gentle pulsing for loading states
+- Glass shine/sweep effects for premium feel
+
+All animations are calm and predictable—no jarring effects.
+
+
+================================================================================
+                        API ENDPOINTS
+================================================================================
+
+RESOLUTIONS (Goals)
+--------------------------------------------------------------------------------
+GET    /api/resolutions              List all goals
+POST   /api/resolutions              Create new goal
+GET    /api/resolutions/{id}         Get goal details
+DELETE /api/resolutions/{id}         Delete goal
+
+CHECKINS
+--------------------------------------------------------------------------------
+GET    /api/checkins?resolution_id=X Get check-ins for goal
+POST   /api/checkins                 Create new check-in
+
+DASHBOARD
+--------------------------------------------------------------------------------
+GET    /api/dashboard                Get latest goal dashboard
+GET    /api/dashboard/{id}/          Get dashboard for specific goal
+
+REALITY CHECK (LLM Assessment)
+--------------------------------------------------------------------------------
+POST   /api/reality-check/assess     Assess full questionnaire
+POST   /api/reality-check/step       Assess individual step
+
+DEMO
+--------------------------------------------------------------------------------
+POST   /api/demo/seed                Seed demo data for testing
+
+HEALTH
+--------------------------------------------------------------------------------
+GET    /api/health                   Health check endpoint
+
+
+================================================================================
+                        LLM INTEGRATION
+================================================================================
+
+OLLAMA CONFIGURATION
+--------------------------------------------------------------------------------
+Base URL:     http://localhost:11434 (configurable via OLLAMA_BASE_URL)
+Model:        gemma2:2b (configurable via OLLAMA_MODEL)
+Timeout:      30 seconds (configurable via OLLAMA_TIMEOUT_SECONDS)
+Context:      8192 tokens (configurable via OLLAMA_NUM_CTX)
+
+PROMPT SAFETY
+--------------------------------------------------------------------------------
+- Automatic prompt truncation to prevent context overflow
+- Keeps first 60% and last 40% of content when truncating
+- Maximum prompt characters: 6000 (configurable)
+
+FALLBACK BEHAVIOR
+--------------------------------------------------------------------------------
+When Ollama is unavailable, the system uses deterministic stubs:
+- Reality check returns "ok" status with neutral signals
+- Mirror reports use rule-based pattern detection
+- Plan adjustments use hardcoded rules
+
+This ensures the app remains functional without LLM.
+
+USE CASES
+--------------------------------------------------------------------------------
+1. Goal Clarity Assessment: Is the goal specific and actionable?
+2. Resource Discovery: Suggest relevant resources for the goal
+3. Mirror Report Generation: Analyze patterns and provide insights
+
+
+================================================================================
+                     SECURITY CONSIDERATIONS
+================================================================================
+
+BACKEND SECURITY
+--------------------------------------------------------------------------------
+- CORS middleware with configurable allowed origins
+- TrustedHost middleware in production
+- API docs disabled in production mode
+- Input validation via Pydantic schemas
+- Parameterized SQL queries (SQLAlchemy ORM)
+
+FRONTEND SECURITY
+--------------------------------------------------------------------------------
+- Input sanitization for user text
+- Character limits on all text inputs
+- Error messages don't expose internals
+- No console.log in production builds
+
+ENVIRONMENT VARIABLES
+--------------------------------------------------------------------------------
+Required in .env:
+- ENVIRONMENT: development | production
+- ALLOWED_ORIGINS: Comma-separated list of allowed origins
+- OLLAMA_BASE_URL: URL for Ollama server
+- OLLAMA_MODEL: Model name to use
+
+
+================================================================================
+                      GETTING STARTED
+================================================================================
+
+PREREQUISITES
+--------------------------------------------------------------------------------
+- Python 3.10+
+- Node.js 18+
+- Ollama (optional, has fallback)
+
+BACKEND SETUP
+--------------------------------------------------------------------------------
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp ../.env.example ../.env
+uvicorn app.main:app --reload --port 8000
+
+FRONTEND SETUP
+--------------------------------------------------------------------------------
+cd frontend
+npm install
+npm run dev
+
+ACCESS
+--------------------------------------------------------------------------------
+Frontend:     http://localhost:3000
+Backend API:  http://localhost:8000
+API Docs:     http://localhost:8000/docs (dev only)
+
+DEMO MODE
+--------------------------------------------------------------------------------
+Click "Load Demo Data" on the dashboard to seed sample data
+and trigger a mirror report instantly for testing.
+
+
+================================================================================
+                     DEVELOPMENT WORKFLOW
+================================================================================
+
+ADDING A NEW FEATURE
+--------------------------------------------------------------------------------
+1. Define Pydantic schemas (backend/app/schemas.py)
+2. Add SQLAlchemy models if needed (backend/app/models.py)
+3. Create service logic (backend/app/services/)
+4. Add API routes (backend/app/routes/)
+5. Update frontend API client (frontend/lib/api.ts)
+6. Build React components (frontend/components/)
+7. Add pages (frontend/app/)
+
+TESTING
+--------------------------------------------------------------------------------
+- Use demo data seeding for quick testing
+- Check API health: GET /api/health
+- Frontend dev server has hot reload
+- Backend has auto-reload via uvicorn --reload
+
+
+================================================================================
+                         FUTURE ROADMAP
+================================================================================
+
+POTENTIAL ENHANCEMENTS
+--------------------------------------------------------------------------------
+- [ ] User authentication and multi-user support
+- [ ] Mobile app (React Native)
+- [ ] Push notifications for check-in reminders
+- [ ] Weekly/monthly summary emails
+- [ ] Integration with calendar apps
+- [ ] Habit streaks and milestone celebrations
+- [ ] Community features (anonymous pattern sharing)
+- [ ] More LLM models support (OpenAI, Anthropic)
+- [ ] Data export/import functionality
+- [ ] Dark mode theme
+
+
+================================================================================
+                          LICENSE
+================================================================================
+
+This is a personal project. All rights reserved.
+
+
+================================================================================
+                         CONTACT
+================================================================================
+
+For questions or contributions, please reach out to the project maintainer.
+
+
+================================================================================
+                    END OF PROJECT DESCRIPTION
+================================================================================

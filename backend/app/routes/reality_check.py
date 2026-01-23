@@ -2,6 +2,7 @@
 Reality Check API Routes
 ============================================================
 Provides both legacy per-field validation and new full-payload assessment.
+Also includes Agent B for minimum action generation and accountability suggestions.
 """
 from fastapi import APIRouter
 from app.services.reality_check import (
@@ -14,11 +15,11 @@ from app.services.goal_assessment import (
     AssessmentResponse,
     assess_questionnaire
 )
-from app.services.resource_discovery import (
-    ResourceDiscoveryRequest,
-    ResourceDiscoveryResponse,
-    discover_resources
+from app.services.onboarding_agents import (
+    generate_minimum_actions,
+    generate_accountability_suggestions
 )
+from app.schemas import OnboardingAgentRequest, OnboardingAgentResponse
 
 router = APIRouter()
 
@@ -30,24 +31,38 @@ router = APIRouter()
 async def assess_goal(request: AssessmentRequest) -> AssessmentResponse:
     """
     Full-payload assessment of questionnaire data.
-    Returns goal type classification, clarity signals, flags, and next-step recommendations.
+    Returns goal type classification, clarity signals, and flags.
     """
     return await assess_questionnaire(payload=request.payload)
 
 
 # ============================================================
-# Resource Discovery Endpoint (Agent B)
+# Agent B: Generate Minimum Actions + Accountability Suggestions
 # ============================================================
 
-@router.post("/discover/", response_model=ResourceDiscoveryResponse)
-async def discover_goal_resources(request: ResourceDiscoveryRequest) -> ResourceDiscoveryResponse:
+@router.post("/generate-options/", response_model=OnboardingAgentResponse)
+async def generate_onboarding_options(request: OnboardingAgentRequest) -> OnboardingAgentResponse:
     """
-    Resource discovery for goals where user doesn't know how to start.
-    Returns roadmap, resources, and candidate minimum actions.
+    Generate personalized minimum action options and accountability suggestions.
+    Called after Agent A approves the goal.
     """
-    return await discover_resources(
-        payload=request.payload,
-        goal_type=request.goal_type
+    # Run both agents in parallel for faster response
+    min_actions = await generate_minimum_actions(
+        goal=request.goal,
+        why=request.why or "",
+        boundaries=request.boundaries,
+        frequency=request.frequency
+    )
+    
+    accountability = await generate_accountability_suggestions(
+        goal=request.goal,
+        why=request.why or "",
+        boundaries=request.boundaries
+    )
+    
+    return OnboardingAgentResponse(
+        minimum_actions=min_actions.minimum_actions,
+        accountability_suggestions=accountability.suggestions
     )
 
 

@@ -163,6 +163,10 @@ function MirrorContent() {
               </div>
             </div>
           </div>
+          {/* Drift explanation - calm helper text */}
+          <p className="text-xs text-neutral-500 mt-3 text-center">
+            Drift doesn&apos;t mean failure. It just means the plan and real life are out of sync.
+          </p>
         </header>
 
         {/* Findings - Premium glass cards */}

@@ -53,56 +53,160 @@ def stub_extract_signals(planned: str, actual: str, blocker: str, completed: boo
     
     return signals[:3]
 
+
 def stub_compose_mirror(
     goal_title: str,
     goal_why: str,
     signals: List[Dict],
-    drift_score: float
+    drift_score: float,
+    frequency_stats: Dict = None,
+    recent_checkins: List = None
 ) -> Dict:
-    """Deterministic fallback for mirror composition."""
+    """
+    Data-driven mirror composition with specific, actionable findings.
+    
+    Args:
+        goal_title: The user's goal
+        goal_why: Why they want this goal
+        signals: List of signal dicts from check-ins
+        drift_score: Current drift score (0-1)
+        frequency_stats: Weekly frequency data from get_weekly_frequency_stats()
+        recent_checkins: Last 5 check-ins for pattern analysis
+    """
     findings = []
-    evidence = []
     
-    # Collect evidence from signals
-    for s in signals:
-        evidence.append(s["content"])
+    # Default frequency stats if not provided
+    if not frequency_stats:
+        frequency_stats = {
+            'this_week_count': 0,
+            'this_week_target': 3,
+            'this_week_rate': 0.0,
+            'last_week_count': 0,
+            'last_week_rate': 0.0,
+            'trend': 'stable',
+            'days_since_last': None
+        }
     
-    # Generate findings based on signal types
-    signal_types = [s["signal_type"] for s in signals]
+    # ============================================================
+    # FINDING 1: Frequency Pattern (most important)
+    # ============================================================
+    target = frequency_stats['this_week_target']
+    this_week = frequency_stats['this_week_count']
+    last_week = frequency_stats['last_week_count']
+    trend = frequency_stats['trend']
+    days_gap = frequency_stats['days_since_last']
     
-    if "blocker" in signal_types:
+    if frequency_stats['this_week_rate'] < 0.5:
         findings.append({
-            "finding": "External obstacles are appearing in your path",
-            "evidence": [s["content"] for s in signals if s["signal_type"] == "blocker"][:2],
+            "finding": f"You've checked in {this_week} time(s) this week against your target of {target}x per week",
+            "evidence": [
+                f"This week: {this_week}/{target} sessions completed",
+                f"Last week: {last_week}/{target} sessions completed"
+            ],
+            "order": 1
+        })
+    elif trend == 'declining':
+        findings.append({
+            "finding": f"Your check-in frequency is declining (last week: {last_week}, this week: {this_week})",
+            "evidence": [
+                f"Target: {target}x per week",
+                "Frequency dropped compared to previous week"
+            ],
             "order": 1
         })
     
-    if "friction" in signal_types:
+    # Gap detection
+    if days_gap and days_gap >= 3:
         findings.append({
-            "finding": "There's some internal resistance showing up",
-            "evidence": [s["content"] for s in signals if s["signal_type"] == "friction"][:2],
+            "finding": f"It's been {days_gap} days since your last check-in",
+            "evidence": [
+                f"Your target is {target}x per week (~every {7//target} days)",
+                "Longer gaps make it harder to maintain momentum"
+            ],
             "order": 1
         })
     
-    if "gap" in signal_types:
+    # ============================================================
+    # FINDING 2: Friction Pattern
+    # ============================================================
+    if recent_checkins:
+        high_friction_count = sum(1 for c in recent_checkins if c.friction >= 3)
+        avg_friction = sum(c.friction for c in recent_checkins) / len(recent_checkins)
+        
+        if high_friction_count >= 2:
+            findings.append({
+                "finding": f"High friction reported in {high_friction_count} of your last {len(recent_checkins)} check-ins",
+                "evidence": [
+                    f"Average friction: {avg_friction:.1f}/3",
+                    "High friction often signals the plan needs adjustment"
+                ],
+                "order": 2
+            })
+    
+    # ============================================================
+    # FINDING 3: Blocker Pattern
+    # ============================================================
+    blocker_signals = [s for s in signals if s.get("signal_type") == "blocker"]
+    if len(blocker_signals) >= 2:
         findings.append({
-            "finding": "What you planned and what happened are diverging—this is a pattern worth noticing",
-            "evidence": [s["content"] for s in signals if s["signal_type"] == "gap"][:2],
+            "finding": f"External blockers appeared {len(blocker_signals)} times recently",
+            "evidence": [s["content"][:80] for s in blocker_signals[:2]],
             "order": 2
         })
     
+    # ============================================================
+    # FINDING 4: Completion Pattern
+    # ============================================================
+    if recent_checkins:
+        completion_rate = sum(1 for c in recent_checkins if c.did_minimum_action) / len(recent_checkins)
+        if completion_rate < 0.5:
+            completed = sum(1 for c in recent_checkins if c.did_minimum_action)
+            findings.append({
+                "finding": f"Minimum action completed {completed} of {len(recent_checkins)} times ({completion_rate:.0%})",
+                "evidence": [
+                    "The minimum action might need to be even smaller",
+                    "Focus on consistency over intensity"
+                ],
+                "order": 2
+            })
+    
+    # Default finding if none triggered
     if not findings:
         findings.append({
-            "finding": "Your recent activity shows mixed signals",
-            "evidence": evidence[:2] if evidence else ["Limited data available"],
+            "finding": f"You're tracking {goal_title} with some variability",
+            "evidence": [
+                f"This week: {this_week}/{target} check-ins",
+                f"Drift score: {drift_score:.0%}"
+            ],
             "order": 1
         })
     
-    # Generate counterfactual
-    counterfactual = "Based on your pattern, you likely could have completed one more session this week if you reduced the session length by 5 minutes. This small adjustment was within reach."
-    
-    if drift_score > 0.6:
-        counterfactual = "Based on your friction levels, you likely could have maintained momentum if sessions were shorter and more frequent. Even 10 minutes done consistently beats 30 minutes skipped."
+    # ============================================================
+    # Generate actionable counterfactual
+    # ============================================================
+    if frequency_stats['this_week_rate'] < 0.5 and days_gap and days_gap >= 2:
+        counterfactual = (
+            f"If you had checked in just once more this week, you'd be at "
+            f"{this_week + 1}/{target} ({(this_week + 1) / target:.0%} of target). "
+            "One small session could shift the pattern."
+        )
+    elif recent_checkins:
+        avg_friction = sum(c.friction for c in recent_checkins) / len(recent_checkins)
+        if avg_friction > 2:
+            counterfactual = (
+                "Your friction is high. If sessions were 5 minutes shorter, "
+                "you'd likely complete more of them. Consistency beats intensity."
+            )
+        else:
+            counterfactual = (
+                f"You're averaging {frequency_stats['this_week_rate']:.0%} of your weekly target. "
+                "Adding one more session per week could significantly boost momentum."
+            )
+    else:
+        counterfactual = (
+            "Building a habit takes about 66 days on average. "
+            "Small, consistent actions compound over time."
+        )
     
     return {
         "findings": findings[:3],

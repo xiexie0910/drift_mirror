@@ -310,6 +310,64 @@ body {
     100% { background-position: 200% center; }
   }
 
+  /* Mochi waterfall animations */
+  @keyframes water-flow {
+    0% { 
+      stroke-dashoffset: 100;
+      opacity: 0;
+    }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { 
+      stroke-dashoffset: 0;
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes water-droplet {
+    0% { 
+      transform: translateY(0) scale(1);
+      opacity: 0.7;
+    }
+    50% { 
+      transform: translateY(-15px) scale(0.8);
+      opacity: 0.9;
+    }
+    100% { 
+      transform: translateY(5px) scale(0.4);
+      opacity: 0;
+    }
+  }
+
+  @keyframes water-splash {
+    0% { 
+      transform: scaleX(0.5);
+      opacity: 0;
+    }
+    50% { 
+      transform: scaleX(1.2);
+      opacity: 0.6;
+    }
+    100% { 
+      transform: scaleX(0.8);
+      opacity: 0;
+    }
+  }
+
+  .animate-flow {
+    stroke-dasharray: 100;
+    animation: water-flow 2s ease-in-out infinite;
+  }
+
+  .animate-droplet {
+    animation: water-droplet 0.8s ease-in-out infinite;
+  }
+
+  .animate-splash {
+    animation: water-splash 1s ease-in-out infinite;
+    transform-origin: center;
+  }
+
   .animate-float {
     animation: float 8s ease-in-out infinite;
   }
