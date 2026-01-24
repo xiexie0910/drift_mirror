@@ -72,6 +72,7 @@ class MirrorReport(Base):
     findings = Column(JSON, nullable=False)  # [{finding, evidence, order}]
     counterfactual = Column(Text, nullable=True)
     drift_score = Column(Float, nullable=False)
+    actionable_suggestions = Column(JSON, nullable=True)  # [{type, suggestion, changes: {field: value}}]
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class Feedback(Base):
@@ -80,6 +81,23 @@ class Feedback(Base):
     id = Column(Integer, primary_key=True, index=True)
     mirror_report_id = Column(Integer, ForeignKey("mirror_reports.id"), nullable=False)
     helpful = Column(Boolean, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class InsightAction(Base):
+    """
+    User actions taken on patterns/insights detected by the system.
+    Stores user choices to adopt suggestions, add constraints, or ignore patterns.
+    """
+    __tablename__ = "insight_actions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    resolution_id = Column(Integer, ForeignKey("resolutions.id"), nullable=False)
+    mirror_report_id = Column(Integer, ForeignKey("mirror_reports.id"), nullable=True)  # Optional: link to specific mirror report
+    insight_type = Column(String(50), nullable=False)  # "pattern", "drift", "mirror", "time_preference"
+    insight_summary = Column(Text, nullable=False)  # Brief summary of the insight user acted on
+    action_taken = Column(String(50), nullable=False)  # "adopt", "constrain", "ignore"
+    constraint_details = Column(Text, nullable=True)  # User-specified constraint when action="constrain"
+    suggested_changes = Column(JSON, nullable=True)  # What was suggested (e.g., {"time_window": "evening", "frequency_per_week": 2})
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

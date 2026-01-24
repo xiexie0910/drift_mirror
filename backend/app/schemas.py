@@ -83,6 +83,7 @@ class MirrorReportResponse(BaseModel):
     findings: List[FindingSchema]
     counterfactual: Optional[str]
     drift_score: float
+    actionable_suggestions: Optional[List[dict]] = None
     created_at: datetime
     
     class Config:
@@ -123,6 +124,32 @@ class DebugPayload(BaseModel):
 class FeedbackCreate(BaseModel):
     mirror_report_id: int
     helpful: bool
+
+# Insight Actions
+class InsightActionCreate(BaseModel):
+    """User action taken on a detected pattern or insight."""
+    resolution_id: int = Field(..., gt=0)
+    mirror_report_id: Optional[int] = Field(default=None, gt=0)
+    insight_type: str = Field(..., pattern="^(pattern|drift|mirror|time_preference)$")
+    insight_summary: str = Field(..., min_length=1, max_length=500)
+    action_taken: str = Field(..., pattern="^(accept|constrain|ignore)$")
+    constraint_details: Optional[str] = Field(default=None, max_length=1000)
+    suggested_changes: Optional[dict] = None  # JSON structure for suggested changes
+
+class InsightActionResponse(BaseModel):
+    """Response for an insight action."""
+    id: int
+    resolution_id: int
+    mirror_report_id: Optional[int]
+    insight_type: str
+    insight_summary: str
+    action_taken: str
+    constraint_details: Optional[str]
+    suggested_changes: Optional[dict]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 # ============================================================

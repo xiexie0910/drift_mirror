@@ -18,6 +18,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { MetricPills } from '@/components/MetricPills';
 import { Timeline } from '@/components/Timeline';
+import { InsightCard } from '@/components/InsightCard';
 import { 
   ArrowLeft, Plus, ArrowRight, Sparkles, Target, 
   Trash2, Calendar, Clock, Flag, Zap, TrendingUp, X, Loader2, Check
@@ -35,9 +36,6 @@ export default function GoalDetailPage() {
   
   // Checkin detail modal state
   const [selectedCheckin, setSelectedCheckin] = useState<Checkin | null>(null);
-  
-  // Momentum minimum visibility state
-  const [showMomentumMinimum, setShowMomentumMinimum] = useState(true);
   
   // Progress summary state
   const [showSummary, setShowSummary] = useState(false);
@@ -67,15 +65,6 @@ export default function GoalDetailPage() {
   useEffect(() => {
     loadGoalDetails();
   }, [loadGoalDetails]);
-
-  // Hide momentum minimum suggestion after 5 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowMomentumMinimum(false);
-    }, 5000);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this goal? All check-ins and data will be lost.')) {
@@ -210,20 +199,10 @@ export default function GoalDetailPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-teal-600 uppercase tracking-wider font-medium mb-1">
-                    Base Minimum <span className="text-neutral-400 normal-case">(always counts)</span>
+                    Minimum Action
                   </p>
                   <p className="text-neutral-700">{resolution.minimum_action_text}</p>
                   <p className="text-xs text-neutral-500 mt-1">{resolution.min_minutes} min</p>
-                  
-                  {/* Momentum Minimum Suggestion */}
-                  {showMomentumMinimum && metrics.suggest_momentum_minimum && metrics.momentum_suggestion_text && (
-                    <div className="mt-3 p-3 bg-amber-50/50 rounded-xl border border-amber-200/50">
-                      <p className="text-xs text-amber-600 uppercase tracking-wider font-medium mb-1">
-                        Momentum Minimum <span className="text-amber-400 normal-case">(optional)</span>
-                      </p>
-                      <p className="text-sm text-amber-700">{metrics.momentum_suggestion_text}</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -351,6 +330,31 @@ export default function GoalDetailPage() {
             <p className="text-xs text-neutral-500 mt-3 pt-3 border-t border-white/20">
               Drift doesn&apos;t mean failure. It just means the plan and real life are out of sync.
             </p>
+          </div>
+        )}
+
+        {/* Actionable Suggestions from Latest Mirror */}
+        {latest_mirror?.actionable_suggestions && latest_mirror.actionable_suggestions.length > 0 && (
+          <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.175s' }}>
+            {latest_mirror.actionable_suggestions.slice(0, 2).map((suggestion, idx) => (
+              <InsightCard
+                key={idx}
+                suggestion={suggestion}
+                resolutionId={goalId}
+                mirrorReportId={latest_mirror.id}
+                onActionComplete={loadGoalDetails}
+              />
+            ))}
+            {latest_mirror.actionable_suggestions.length > 2 && (
+              <Button
+                onClick={() => router.push(`/mirror?goal=${goalId}`)}
+                variant="glass"
+                className="w-full gap-2"
+              >
+                View all {latest_mirror.actionable_suggestions.length} suggestions
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         )}
 

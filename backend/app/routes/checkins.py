@@ -11,6 +11,84 @@ from app.services.prompts import SIGNAL_EXTRACTOR_SYSTEM, SIGNAL_EXTRACTOR_PROMP
 
 router = APIRouter()
 
+def generate_actionable_suggestions(
+    checkins: List[Checkin], 
+    current_plan: Plan, 
+    drift_score: float,
+    frequency_stats: dict
+) -> List[dict]:
+    """
+    Generate actionable suggestions based on drift patterns.
+    Returns a list of suggestions with type, message, and suggested changes.
+    """
+    suggestions = []
+    
+    if not checkins or not current_plan:
+        return suggestions
+    
+    recent = checkins[:5]
+    n = len(recent)
+    
+    # Calculate metrics
+    avg_friction = sum(c.friction for c in recent) / n
+    completion_rate = sum(1 for c in recent if c.did_minimum_action) / n
+    missed_count = sum(1 for c in recent if not c.did_minimum_action)
+    
+    # Suggestion 1: High friction → reduce duration
+    if avg_friction >= 2.5:
+        new_mins = max(5, current_plan.min_minutes - 5)
+        suggestions.append({
+            "type": "reduce_duration",
+            "suggestion": f"Your sessions feel harder than they should. Try reducing from {current_plan.min_minutes} to {new_mins} minutes to build momentum.",
+            "changes": {"min_minutes": new_mins},
+            "reason": f"Average friction is {avg_friction:.1f}/3.0"
+        })
+    
+    # Suggestion 2: Low completion → simplify minimum action
+    if completion_rate < 0.5 and n >= 3:
+        suggestions.append({
+            "type": "simplify_action",
+            "suggestion": "The minimum action might be too ambitious. Consider breaking it into an even smaller step you can do on difficult days.",
+            "changes": {},  # This requires manual adjustment
+            "reason": f"Only {int(completion_rate * 100)}% completion rate"
+        })
+    
+    # Suggestion 3: Below weekly target → adjust frequency
+    if frequency_stats.get('this_week_rate', 0) < 0.6 and frequency_stats.get('trend') == 'declining':
+        new_freq = max(1, current_plan.frequency_per_week - 1)
+        suggestions.append({
+            "type": "reduce_frequency",
+            "suggestion": f"You're hitting {frequency_stats['this_week_count']}/{frequency_stats['this_week_target']} check-ins this week. Adjusting to {new_freq}x per week might feel more sustainable.",
+            "changes": {"frequency_per_week": new_freq},
+            "reason": f"Weekly rate: {int(frequency_stats['this_week_rate'] * 100)}%"
+        })
+    
+    # Suggestion 4: Pattern of misses → try different time
+    if missed_count >= 2:
+        time_options = ["morning", "afternoon", "evening", "night"]
+        current_idx = time_options.index(current_plan.time_window) if current_plan.time_window in time_options else 0
+        next_time = time_options[(current_idx + 1) % len(time_options)]
+        suggestions.append({
+            "type": "change_time",
+            "suggestion": f"You've missed {missed_count} of your last {n} attempts. Would trying {next_time} instead of {current_plan.time_window} work better with your schedule?",
+            "changes": {"time_window": next_time},
+            "reason": f"{missed_count}/{n} recent misses"
+        })
+    
+    # Suggestion 5: High drift + high friction → recovery mode
+    if drift_score > 0.6 and avg_friction >= 2.5:
+        suggestions.append({
+            "type": "recovery_mode",
+            "suggestion": "The plan feels out of sync with your reality right now. Take a week to just show up—no pressure on duration or quality. We'll rebuild from there.",
+            "changes": {
+                "min_minutes": 5,
+                "frequency_per_week": max(1, current_plan.frequency_per_week - 1)
+            },
+            "reason": f"High drift ({drift_score:.1f}) + high friction ({avg_friction:.1f})"
+        })
+    
+    return suggestions[:3]  # Return top 3 suggestions
+
 @router.post("/", response_model=dict)
 async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
     # Verify resolution exists
@@ -93,12 +171,18 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
         # Compose mirror report with frequency data
         mirror_data = await compose_mirror(resolution, all_signals, drift_score, db, all_checkins)
         
+        # Generate actionable suggestions based on drift patterns
+        actionable_suggestions = generate_actionable_suggestions(
+            all_checkins, current_plan if current_plan else None, drift_score, frequency_stats
+        )
+        
         # Store mirror report
         mirror = MirrorReport(
             resolution_id=data.resolution_id,
             findings=mirror_data["findings"],
             counterfactual=mirror_data.get("counterfactual"),
-            drift_score=drift_score
+            drift_score=drift_score,
+            actionable_suggestions=actionable_suggestions
         )
         db.add(mirror)
         db.commit()
@@ -123,6 +207,8 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
             )
             minimum_action_rate = min_action_count / n if n > 0 else 0
             
+            # Compute what changes would be suggested (no longer auto-applied)
+            # User must now explicitly accept suggestions via the Insight Action system
             changes, adjustment_reason = compute_plan_adjustment(
                 current_plan, 
                 drift_score, 
@@ -132,13 +218,14 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
                 recent
             )
             
+            # DISABLED: Auto-apply removed - user must accept suggestions via InsightCard
             # Only create new plan for actual parameter changes (not simplify_minimum_action flag)
-            param_changes = {k: v for k, v in changes.items() if k != "simplify_minimum_action"}
-            if param_changes:
-                create_new_plan_version(
-                    data.resolution_id, current_plan, param_changes, adjustment_reason
-                )
-                plan_updated = True
+            # param_changes = {k: v for k, v in changes.items() if k != "simplify_minimum_action"}
+            # if param_changes:
+            #     create_new_plan_version(
+            #         data.resolution_id, current_plan, param_changes, adjustment_reason
+            #     )
+            #     plan_updated = True
     
     # Build debug payload
     stored_signals = db.query(Signal).filter(Signal.checkin_id == checkin.id).all()

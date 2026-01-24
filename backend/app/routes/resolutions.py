@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models import Resolution, Plan, Checkin, Signal, MirrorReport
-from app.schemas import ResolutionCreate, ResolutionResponse, PlanResponse
+from app.models import Resolution, Plan, Checkin, Signal, MirrorReport, InsightAction
+from app.schemas import ResolutionCreate, ResolutionResponse, PlanResponse, InsightActionCreate, InsightActionResponse
 
 router = APIRouter()
 
@@ -56,6 +56,72 @@ async def get_current_plan(resolution_id: int, db: Session = Depends(get_db)):
     if not plan:
         raise HTTPException(status_code=404, detail="No plan found")
     return plan
+
+@router.post("/{resolution_id}/insights/actions", response_model=InsightActionResponse)
+async def create_insight_action(
+    resolution_id: int, 
+    data: InsightActionCreate, 
+    db: Session = Depends(get_db)
+):
+    """
+    Handle user action on a detected pattern/insight.
+    Actions: adopt (apply suggestion), constrain (add a constraint), ignore (dismiss).
+    """
+    # Verify resolution exists
+    resolution = db.query(Resolution).filter(Resolution.id == resolution_id).first()
+    if not resolution:
+        raise HTTPException(status_code=404, detail="Resolution not found")
+    
+    # Verify mirror report exists if provided
+    if data.mirror_report_id:
+        mirror = db.query(MirrorReport).filter(MirrorReport.id == data.mirror_report_id).first()
+        if not mirror:
+            raise HTTPException(status_code=404, detail="Mirror report not found")
+    
+    # Create insight action record
+    insight_action = InsightAction(
+        resolution_id=resolution_id,
+        mirror_report_id=data.mirror_report_id,
+        insight_type=data.insight_type,
+        insight_summary=data.insight_summary,
+        action_taken=data.action_taken,
+        constraint_details=data.constraint_details,
+        suggested_changes=data.suggested_changes
+    )
+    db.add(insight_action)
+    db.commit()
+    db.refresh(insight_action)
+    
+    # If action is "accept", apply the suggested changes to create a new plan version
+    if data.action_taken == "accept" and data.suggested_changes:
+        current_plan = db.query(Plan).filter(
+            Plan.resolution_id == resolution_id
+        ).order_by(Plan.version.desc()).first()
+        
+        if current_plan:
+            new_version = current_plan.version + 1
+            new_plan = Plan(
+                resolution_id=resolution_id,
+                version=new_version,
+                frequency_per_week=data.suggested_changes.get('frequency_per_week', current_plan.frequency_per_week),
+                min_minutes=data.suggested_changes.get('min_minutes', current_plan.min_minutes),
+                time_window=data.suggested_changes.get('time_window', current_plan.time_window),
+                recovery_step=f"User accepted suggestion: {data.insight_summary}"
+            )
+            db.add(new_plan)
+            db.commit()
+    
+    return insight_action
+
+@router.get("/{resolution_id}/insights/actions", response_model=list[InsightActionResponse])
+async def get_insight_actions(resolution_id: int, db: Session = Depends(get_db)):
+    """
+    Get all insight actions for a resolution.
+    Useful for understanding user preferences and avoiding repeated suggestions.
+    """
+    return db.query(InsightAction).filter(
+        InsightAction.resolution_id == resolution_id
+    ).order_by(InsightAction.created_at.desc()).all()
 
 @router.delete("/{resolution_id}/")
 async def delete_resolution(resolution_id: int, db: Session = Depends(get_db)):

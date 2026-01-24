@@ -11,6 +11,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { InsightCard } from '@/components/InsightCard';
 import { ChevronDown, ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Eye, Loader2 } from 'lucide-react';
 import { api, Dashboard } from '@/lib/api';
 
@@ -41,7 +42,7 @@ function MirrorContent() {
   const handleFeedback = async (helpful: boolean) => {
     if (!dashboard?.latest_mirror) return;
     try {
-      await api.submitMirrorFeedback(dashboard.latest_mirror.id, helpful);
+      await api.submitFeedback(dashboard.latest_mirror.id, helpful);
       setFeedbackGiven(true);
       setFeedbackError(false);
     } catch {
@@ -229,6 +230,30 @@ function MirrorContent() {
             </div>
           ))}
         </section>
+
+        {/* Actionable Suggestions */}
+        {mirror.actionable_suggestions && mirror.actionable_suggestions.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xs font-medium text-teal-600 uppercase tracking-wider">
+              What We Suggest
+            </h2>
+            {mirror.actionable_suggestions.map((suggestion, idx) => (
+              <InsightCard
+                key={idx}
+                suggestion={suggestion}
+                resolutionId={dashboard.resolution?.id || 0}
+                mirrorReportId={mirror.id}
+                onActionComplete={() => {
+                  // Reload dashboard to reflect changes
+                  const loadDashboard = goalId 
+                    ? api.getDashboardForResolution(Number(goalId))
+                    : api.getDashboard();
+                  loadDashboard.then(setDashboard);
+                }}
+              />
+            ))}
+          </section>
+        )}
 
         {/* Alternative perspective */}
         {mirror.counterfactual && (
