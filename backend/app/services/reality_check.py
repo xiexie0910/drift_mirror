@@ -5,7 +5,6 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 
 from app.services.llm_client import call_llm, extract_json_from_response
-from app.services.stubs import stub_reality_check
 
 # ============================================================
 # Pydantic Schemas
@@ -224,10 +223,9 @@ async def run_reality_check(
     for attempt in range(2 if retry else 1):
         response_text = await call_llm(prompt, SYSTEM_PROMPT)
         
-        if response_text:
-            parsed = extract_json_from_response(response_text)
-            if parsed:
-                try:
+        parsed = extract_json_from_response(response_text)
+        if parsed:
+            try:
                     # Validate with Pydantic
                     result = RealityCheckResponse(
                         status=parsed.get("status", "ok"),
@@ -245,9 +243,8 @@ async def run_reality_check(
                     result.rewrite_options = result.rewrite_options[:1]
                     
                     return result
-                except Exception:
-                    # Silent fail - will retry or use fallback
-                    continue
+            except Exception:
+                # Silent fail - will retry
+                continue
     
-    # Fallback to stub (deterministic clarity detection)
-    return stub_reality_check(step, user_input, context)
+    raise RuntimeError("Reality check failed to produce a valid Gemini response")

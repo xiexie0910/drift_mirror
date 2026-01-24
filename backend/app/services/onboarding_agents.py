@@ -30,82 +30,6 @@ class AccountabilitySuggestionsResponse(BaseModel):
 
 
 # ============================================================
-# Stub Fallbacks
-# ============================================================
-
-def stub_minimum_actions(goal: str) -> MinimumActionsResponse:
-    """Fallback minimum actions when LLM is unavailable."""
-    # Generic but useful minimum actions
-    return MinimumActionsResponse(
-        minimum_actions=[
-            MinimumActionOption(
-                text="Set a timer for 2 minutes and start",
-                minutes=2,
-                rationale="Starting is the hardest part"
-            ),
-            MinimumActionOption(
-                text="Open the app/tool you need and look at it",
-                minutes=1,
-                rationale="Reducing friction helps you begin"
-            ),
-            MinimumActionOption(
-                text="Do just the first small step",
-                minutes=3,
-                rationale="One step leads to another"
-            ),
-            MinimumActionOption(
-                text="Prepare your space for the activity",
-                minutes=5,
-                rationale="Environment design makes habits easier"
-            ),
-            MinimumActionOption(
-                text="Do 5 minutes of the core activity",
-                minutes=5,
-                rationale="5 minutes often turns into more"
-            ),
-            MinimumActionOption(
-                text="Complete one small unit of the activity",
-                minutes=10,
-                rationale="Progress builds momentum"
-            ),
-        ]
-    )
-
-
-def stub_accountability_suggestions() -> AccountabilitySuggestionsResponse:
-    """Fallback accountability suggestions when LLM is unavailable."""
-    return AccountabilitySuggestionsResponse(
-        suggestions=[
-            AccountabilitySuggestion(
-                text="Find a friend with a similar goal to check in with weekly",
-                type="social",
-                rationale="Social commitment increases follow-through"
-            ),
-            AccountabilitySuggestion(
-                text="Join an online community focused on your goal",
-                type="community",
-                rationale="Group identity reinforces the habit"
-            ),
-            AccountabilitySuggestion(
-                text="Set up your environment to make the habit obvious",
-                type="environment",
-                rationale="Visual cues trigger action"
-            ),
-            AccountabilitySuggestion(
-                text="Tell someone important to you about your goal",
-                type="commitment",
-                rationale="Public commitment creates accountability"
-            ),
-            AccountabilitySuggestion(
-                text="Track your progress visibly (calendar, app, journal)",
-                type="tracking",
-                rationale="Seeing progress motivates continuation"
-            ),
-        ]
-    )
-
-
-# ============================================================
 # LLM-Powered Generation
 # ============================================================
 
@@ -128,14 +52,10 @@ async def generate_minimum_actions(
     )
     
     response = await call_llm(prompt, MINIMUM_ACTION_GENERATOR_SYSTEM)
-    
-    if not response:
-        return stub_minimum_actions(goal)
-    
     parsed = extract_json_from_response(response)
     
     if not parsed or "minimum_actions" not in parsed:
-        return stub_minimum_actions(goal)
+        raise RuntimeError("Gemini failed to generate minimum actions")
     
     try:
         actions = []
@@ -146,8 +66,8 @@ async def generate_minimum_actions(
                 rationale=action.get("rationale", "")
             ))
         return MinimumActionsResponse(minimum_actions=actions)
-    except Exception:
-        return stub_minimum_actions(goal)
+    except Exception as e:
+        raise RuntimeError("Gemini returned invalid minimum actions") from e
 
 
 async def generate_accountability_suggestions(
@@ -167,14 +87,10 @@ async def generate_accountability_suggestions(
     )
     
     response = await call_llm(prompt, ACCOUNTABILITY_SUGGESTIONS_SYSTEM)
-    
-    if not response:
-        return stub_accountability_suggestions()
-    
     parsed = extract_json_from_response(response)
     
     if not parsed or "suggestions" not in parsed:
-        return stub_accountability_suggestions()
+        raise RuntimeError("Gemini failed to generate accountability suggestions")
     
     try:
         suggestions = []
@@ -185,5 +101,5 @@ async def generate_accountability_suggestions(
                 rationale=suggestion.get("rationale", "")
             ))
         return AccountabilitySuggestionsResponse(suggestions=suggestions)
-    except Exception:
-        return stub_accountability_suggestions()
+    except Exception as e:
+        raise RuntimeError("Gemini returned invalid accountability suggestions") from e

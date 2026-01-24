@@ -8,7 +8,6 @@ from app.services.drift import compute_drift_score, should_trigger_mirror, get_d
 from app.services.plan_adjuster import compute_plan_adjustment, create_new_plan_version
 from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.prompts import SIGNAL_EXTRACTOR_SYSTEM, SIGNAL_EXTRACTOR_PROMPT, MIRROR_COMPOSER_SYSTEM, MIRROR_COMPOSER_PROMPT
-from app.services.stubs import stub_extract_signals, stub_compose_mirror
 
 router = APIRouter()
 
@@ -181,19 +180,12 @@ async def extract_signals(
     )
     
     response = await call_llm(prompt, SIGNAL_EXTRACTOR_SYSTEM)
-    result = extract_json_from_response(response) if response else None
+    result = extract_json_from_response(response)
     
     if result and "signals" in result:
         return result["signals"][:3]
     
-    # Fallback to stub
-    return stub_extract_signals(
-        planned=planned,
-        actual=actual,
-        blocker=data.blocker or "",
-        completed=completed,
-        friction=data.friction
-    )
+    raise HTTPException(status_code=502, detail="Gemini failed to extract signals")
 
 async def compose_mirror(
     resolution: Resolution, 
@@ -231,21 +223,12 @@ async def compose_mirror(
     )
     
     response = await call_llm(prompt, MIRROR_COMPOSER_SYSTEM)
-    result = extract_json_from_response(response) if response else None
+    result = extract_json_from_response(response)
     
     if result and "findings" in result:
         return result
     
-    # Fallback to stub with frequency stats
-    signal_dicts = [{"signal_type": s.signal_type, "content": s.content, "severity": s.severity} for s in signals]
-    return stub_compose_mirror(
-        goal_title=resolution.title,
-        goal_why=resolution.why or "",
-        signals=signal_dicts,
-        drift_score=drift_score,
-        frequency_stats=frequency_stats,
-        recent_checkins=recent_checkins
-    )
+    raise HTTPException(status_code=502, detail="Gemini failed to compose mirror report")
 
 @router.get("/{resolution_id}/", response_model=List[CheckinResponse])
 async def get_checkins(resolution_id: int, db: Session = Depends(get_db)):

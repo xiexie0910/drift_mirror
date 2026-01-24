@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 from app.services.llm_client import call_llm, extract_json_from_response
-from app.services.stubs import stub_goal_assessment
 
 # ============================================================
 # Spell Check (using pyspellchecker library)
@@ -350,10 +349,9 @@ async def assess_questionnaire(
     for attempt in range(2 if retry else 1):
         response_text = await call_llm(prompt, SYSTEM_PROMPT)
         
-        if response_text:
-            parsed = extract_json_from_response(response_text)
-            if parsed:
-                try:
+        parsed = extract_json_from_response(response_text)
+        if parsed:
+            try:
                     # Parse signals
                     signals_data = parsed.get("signals", {})
                     signals = ClaritySignals(
@@ -419,19 +417,11 @@ async def assess_questionnaire(
                     
                     return result
                     
-                except Exception:
-                    # Silent fail - will retry or use fallback
-                    continue
+            except Exception:
+                # Silent fail - will retry
+                continue
     
-    # Fallback to deterministic stub (use corrected payload)
-    result = stub_goal_assessment(corrected_payload)
-    # Add spell correction info to stub result
-    result.debug["spell_corrected"] = goal_was_corrected or why_was_corrected
-    if goal_was_corrected:
-        result.debug["corrected_goal"] = corrected_goal
-        if not result.best_guess_goal:
-            result.best_guess_goal = corrected_goal
-    return result
+    raise RuntimeError("Goal assessment failed to produce a valid Gemini response")
 
 # ============================================================
 # Keep legacy function for backward compatibility during transition

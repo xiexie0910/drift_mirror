@@ -30,6 +30,17 @@ def get_weekly_frequency_stats(checkins: List[Checkin], target_frequency: int) -
         }
     
     now = datetime.now(timezone.utc)
+
+    def _coerce_dt(value) -> datetime:
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        if isinstance(value, str):
+            try:
+                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            except ValueError:
+                return now
+        return now
     
     # Calculate week boundaries (Monday = 0)
     days_since_monday = now.weekday()
@@ -37,8 +48,8 @@ def get_weekly_frequency_stats(checkins: List[Checkin], target_frequency: int) -
     last_week_start = this_week_start - timedelta(days=7)
     
     # Count check-ins per week (only completed ones)
-    this_week = [c for c in checkins if c.created_at >= this_week_start and c.did_minimum_action]
-    last_week = [c for c in checkins if last_week_start <= c.created_at < this_week_start and c.did_minimum_action]
+    this_week = [c for c in checkins if _coerce_dt(c.created_at) >= this_week_start and c.did_minimum_action]
+    last_week = [c for c in checkins if last_week_start <= _coerce_dt(c.created_at) < this_week_start and c.did_minimum_action]
     
     this_week_count = len(this_week)
     last_week_count = len(last_week)
@@ -57,8 +68,8 @@ def get_weekly_frequency_stats(checkins: List[Checkin], target_frequency: int) -
     # Days since last check-in
     days_since_last = None
     if checkins:
-        last_checkin = max(checkins, key=lambda c: c.created_at)
-        days_since_last = (now - last_checkin.created_at).days
+        last_checkin = max(checkins, key=lambda c: _coerce_dt(c.created_at))
+        days_since_last = (now - _coerce_dt(last_checkin.created_at)).days
     
     return {
         'this_week_count': this_week_count,

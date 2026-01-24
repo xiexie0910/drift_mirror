@@ -3,7 +3,7 @@ LLM Client - Google Gemini Integration
 ============================================================
 
 Uses Google GenAI SDK with Gemini 3 Flash Preview model.
-Falls back to stub responses on API errors.
+Raises on API errors (no stub fallbacks).
 """
 import json
 import os
@@ -69,19 +69,19 @@ def truncate_prompt(prompt: str, system: str = "", max_chars: int = MAX_PROMPT_C
     return truncated
 
 
-async def call_gemini(prompt: str, system: str = "") -> Optional[str]:
+async def call_gemini(prompt: str, system: str = "") -> str:
     """
     Call Google Gemini API using the GenAI SDK.
     Uses gemini-3-flash-preview with medium thinking level.
-    Returns None on error (triggers stub fallbacks).
+    Raises on error or empty response.
     """
     if not GEMINI_API_KEY:
-        logger.warning("GEMINI_API_KEY not set")
-        return None
+        logger.error("GEMINI_API_KEY not set")
+        raise RuntimeError("GEMINI_API_KEY not set")
     
     client = _get_gemini_client()
     if client is None:
-        return None
+        raise RuntimeError("Failed to initialize Gemini client")
     
     safe_prompt = truncate_prompt(prompt, system)
     full_prompt = f"{system}\n\n{safe_prompt}" if system else safe_prompt
@@ -102,18 +102,16 @@ async def call_gemini(prompt: str, system: str = "") -> Optional[str]:
         if response and response.text:
             logger.info(f"Gemini response received: {len(response.text)} chars")
             return response.text
-        else:
-            logger.warning("Gemini returned empty response")
-            return None
+        raise RuntimeError("Gemini returned empty response")
             
     except Exception as e:
-        logger.warning(f"Gemini error: {type(e).__name__}: {e}")
-        return None
+        logger.error(f"Gemini error: {type(e).__name__}: {e}")
+        raise
 
 
-async def call_llm(prompt: str, system: str = "", json_mode: bool = True) -> Optional[str]:
+async def call_llm(prompt: str, system: str = "", json_mode: bool = True) -> str:
     """
-    Call Gemini LLM. Returns response text or None on error (triggers stub fallbacks).
+    Call Gemini LLM. Returns response text or raises on error.
     
     Args:
         prompt: The user prompt
@@ -121,7 +119,7 @@ async def call_llm(prompt: str, system: str = "", json_mode: bool = True) -> Opt
         json_mode: If True, requests JSON output format (default: True)
     
     Returns:
-        LLM response text or None (triggers stub fallbacks on error)
+        LLM response text
     """
     logger.info(f"Calling Gemini: model={GEMINI_MODEL}")
     return await call_gemini(prompt, system)
