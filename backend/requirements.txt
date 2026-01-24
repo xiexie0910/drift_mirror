@@ -6,3 +6,4 @@ pydantic-settings>=2.1.0
 httpx>=0.26.0
 python-dotenv>=1.0.0
 pyspellchecker>=0.8.0
+google-genai>=1.0.0

@@ -4,7 +4,7 @@ Reality Check Assessor - LLM-powered goal refinement for onboarding wizard.
 from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 
-from app.services.llm_client import call_ollama, extract_json_from_response
+from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.stubs import stub_reality_check
 
 # ============================================================
@@ -222,7 +222,7 @@ async def run_reality_check(
     
     # Try LLM call
     for attempt in range(2 if retry else 1):
-        response_text = await call_ollama(prompt, SYSTEM_PROMPT)
+        response_text = await call_llm(prompt, SYSTEM_PROMPT)
         
         if response_text:
             parsed = extract_json_from_response(response_text)
@@ -236,7 +236,7 @@ async def run_reality_check(
                         clarifying_questions=parsed.get("clarifying_questions", [])[:2],
                         best_guess_refinement=parsed.get("best_guess_refinement"),
                         confidence=min(1.0, max(0.0, float(parsed.get("confidence", 0.7)))),
-                        debug={"model_used": "ollama", "fallback_used": False}
+                        debug={"model_used": "gemini", "fallback_used": False}
                     )
                     
                     # Ensure needs_refinement has exactly 1 rewrite option

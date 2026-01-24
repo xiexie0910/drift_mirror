@@ -6,7 +6,7 @@ from app.models import Resolution, Plan, Checkin, Signal, MirrorReport
 from app.schemas import CheckinCreate, CheckinResponse, SignalResponse, MirrorReportResponse, DebugPayload
 from app.services.drift import compute_drift_score, should_trigger_mirror, get_drift_rules_applied, get_weekly_frequency_stats
 from app.services.plan_adjuster import compute_plan_adjustment, create_new_plan_version
-from app.services.llm_client import call_ollama, extract_json_from_response
+from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.prompts import SIGNAL_EXTRACTOR_SYSTEM, SIGNAL_EXTRACTOR_PROMPT, MIRROR_COMPOSER_SYSTEM, MIRROR_COMPOSER_PROMPT
 from app.services.stubs import stub_extract_signals, stub_compose_mirror
 
@@ -180,7 +180,7 @@ async def extract_signals(
         friction=data.friction
     )
     
-    response = await call_ollama(prompt, SIGNAL_EXTRACTOR_SYSTEM)
+    response = await call_llm(prompt, SIGNAL_EXTRACTOR_SYSTEM)
     result = extract_json_from_response(response) if response else None
     
     if result and "signals" in result:
@@ -230,7 +230,7 @@ async def compose_mirror(
         drift_score=drift_score
     )
     
-    response = await call_ollama(prompt, MIRROR_COMPOSER_SYSTEM)
+    response = await call_llm(prompt, MIRROR_COMPOSER_SYSTEM)
     result = extract_json_from_response(response) if response else None
     
     if result and "findings" in result:

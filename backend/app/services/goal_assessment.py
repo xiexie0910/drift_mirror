@@ -8,7 +8,7 @@ from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
-from app.services.llm_client import call_ollama, extract_json_from_response
+from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.stubs import stub_goal_assessment
 
 # ============================================================
@@ -348,7 +348,7 @@ async def assess_questionnaire(
     
     # Try LLM call
     for attempt in range(2 if retry else 1):
-        response_text = await call_ollama(prompt, SYSTEM_PROMPT)
+        response_text = await call_llm(prompt, SYSTEM_PROMPT)
         
         if response_text:
             parsed = extract_json_from_response(response_text)
@@ -406,7 +406,7 @@ async def assess_questionnaire(
                         best_guess_goal=parsed.get("best_guess_goal") or (corrected_goal if goal_was_corrected else None),
                         confidence=min(1.0, max(0.0, float(parsed.get("confidence", 0.7)))),
                         debug={
-                            "model_used": "ollama", 
+                            "model_used": "gemini", 
                             "fallback_used": False,
                             "spell_corrected": goal_was_corrected or why_was_corrected,
                             "corrected_goal": corrected_goal if goal_was_corrected else None,

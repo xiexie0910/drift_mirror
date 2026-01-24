@@ -4,7 +4,7 @@ Onboarding Agents - Generate minimum actions and accountability suggestions.
 from typing import List
 from pydantic import BaseModel, Field
 
-from app.services.llm_client import call_ollama, extract_json_from_response
+from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.prompts import (
     MINIMUM_ACTION_GENERATOR_SYSTEM,
     MINIMUM_ACTION_GENERATOR_PROMPT,
@@ -127,7 +127,7 @@ async def generate_minimum_actions(
         frequency=frequency
     )
     
-    response = await call_ollama(prompt, MINIMUM_ACTION_GENERATOR_SYSTEM)
+    response = await call_llm(prompt, MINIMUM_ACTION_GENERATOR_SYSTEM)
     
     if not response:
         return stub_minimum_actions(goal)
@@ -166,7 +166,7 @@ async def generate_accountability_suggestions(
         boundaries=boundaries_str
     )
     
-    response = await call_ollama(prompt, ACCOUNTABILITY_SUGGESTIONS_SYSTEM)
+    response = await call_llm(prompt, ACCOUNTABILITY_SUGGESTIONS_SYSTEM)
     
     if not response:
         return stub_accountability_suggestions()

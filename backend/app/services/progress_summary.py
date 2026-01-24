@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
-from app.services.llm_client import call_ollama, extract_json_from_response
+from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.prompts import PROGRESS_SUMMARY_SYSTEM, PROGRESS_SUMMARY_PROMPT
 
 
@@ -110,7 +110,7 @@ async def generate_progress_summary(
         days_to_habit=days_to_habit
     )
     
-    response = await call_ollama(prompt, PROGRESS_SUMMARY_SYSTEM)
+    response = await call_llm(prompt, PROGRESS_SUMMARY_SYSTEM)
     
     if not response:
         return stub_progress_summary(total_checkins, completion_rate, days_tracked)
