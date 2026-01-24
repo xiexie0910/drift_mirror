@@ -297,9 +297,7 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      const response = await api.assessQuestionnaire({
-        payload: buildPayload(),
-      });
+      const response = await api.assessQuestionnaire(buildPayload());
       setAssessment(response);
       setPhase('refinement');
     } catch (err) {

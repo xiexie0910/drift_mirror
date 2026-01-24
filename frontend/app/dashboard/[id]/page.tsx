@@ -20,9 +20,9 @@ import { MetricPills } from '@/components/MetricPills';
 import { Timeline } from '@/components/Timeline';
 import { 
   ArrowLeft, Plus, ArrowRight, Sparkles, Target, 
-  Trash2, Calendar, Clock, Flag, Zap, TrendingUp, X, Loader2
+  Trash2, Calendar, Clock, Flag, Zap, TrendingUp, X, Loader2, Check
 } from 'lucide-react';
-import { api, Dashboard, ProgressSummaryResponse, ApiError } from '@/lib/api';
+import { api, Dashboard, ProgressSummaryResponse, ApiError, Checkin } from '@/lib/api';
 
 export default function GoalDetailPage() {
   const router = useRouter();
@@ -32,6 +32,12 @@ export default function GoalDetailPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  
+  // Checkin detail modal state
+  const [selectedCheckin, setSelectedCheckin] = useState<Checkin | null>(null);
+  
+  // Momentum minimum visibility state
+  const [showMomentumMinimum, setShowMomentumMinimum] = useState(true);
   
   // Progress summary state
   const [showSummary, setShowSummary] = useState(false);
@@ -61,6 +67,15 @@ export default function GoalDetailPage() {
   useEffect(() => {
     loadGoalDetails();
   }, [loadGoalDetails]);
+
+  // Hide momentum minimum suggestion after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowMomentumMinimum(false);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this goal? All check-ins and data will be lost.')) {
@@ -201,7 +216,7 @@ export default function GoalDetailPage() {
                   <p className="text-xs text-neutral-500 mt-1">{resolution.min_minutes} min</p>
                   
                   {/* Momentum Minimum Suggestion */}
-                  {metrics.suggest_momentum_minimum && metrics.momentum_suggestion_text && (
+                  {showMomentumMinimum && metrics.suggest_momentum_minimum && metrics.momentum_suggestion_text && (
                     <div className="mt-3 p-3 bg-amber-50/50 rounded-xl border border-amber-200/50">
                       <p className="text-xs text-amber-600 uppercase tracking-wider font-medium mb-1">
                         Momentum Minimum <span className="text-amber-400 normal-case">(optional)</span>
@@ -428,7 +443,7 @@ export default function GoalDetailPage() {
             </button>
           </div>
           {recent_checkins.length > 0 ? (
-            <Timeline checkins={recent_checkins} />
+            <Timeline checkins={recent_checkins} onCheckinClick={setSelectedCheckin} />
           ) : (
             <div className="glass-subtle rounded-2xl p-8 text-center">
               <p className="text-neutral-500">No check-ins recorded yet.</p>
@@ -482,6 +497,142 @@ export default function GoalDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Checkin Detail Modal - Fixed Center */}
+      {selectedCheckin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
+          <div className="glass-strong rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in-up">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-neutral-800">Check-in Details</h3>
+              <button
+                onClick={() => setSelectedCheckin(null)}
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-neutral-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Date */}
+              <div>
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
+                  Date
+                </p>
+                <p className="text-neutral-800">
+                  {new Date(selectedCheckin.created_at).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <div className={`
+                  w-6 h-6 rounded-full flex items-center justify-center
+                  ${selectedCheckin.did_minimum_action ?? selectedCheckin.completed
+                    ? 'bg-teal-100 text-teal-600' 
+                    : 'bg-neutral-100 text-neutral-400'}
+                `}>
+                  {(selectedCheckin.did_minimum_action ?? selectedCheckin.completed) ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                </div>
+                <span className="text-neutral-800 font-medium">
+                  {(selectedCheckin.did_minimum_action ?? selectedCheckin.completed) ? 'Completed' : 'Missed'}
+                </span>
+              </div>
+
+              {/* Planned vs Actual */}
+              <div className="border-t border-white/20 pt-4">
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
+                  Planned
+                </p>
+                <div 
+                  contentEditable
+                  suppressContentEditableWarning
+                  className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
+                >
+                  {selectedCheckin.planned}
+                </div>
+              </div>
+
+              <div className="border-t border-white/20 pt-4">
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
+                  What Happened
+                </p>
+                <div 
+                  contentEditable
+                  suppressContentEditableWarning
+                  className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
+                >
+                  {selectedCheckin.actual}
+                </div>
+              </div>
+
+              {/* Grid Details */}
+              <div className="grid grid-cols-2 gap-4 border-t border-white/20 pt-4">
+                <div>
+                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
+                    How It Felt
+                  </p>
+                  <p className="text-neutral-800 font-medium">
+                    {selectedCheckin.friction === 1 ? 'Easy' : selectedCheckin.friction === 2 ? 'Medium' : 'Hard'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
+                    Minimum Action
+                  </p>
+                  <p className="text-neutral-800 font-medium">
+                    {(selectedCheckin.did_minimum_action ?? selectedCheckin.completed) ? 'Done ✓' : 'Skipped'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Blocker */}
+              {selectedCheckin.blocker && (
+                <div className="border-t border-white/20 pt-4">
+                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
+                    What Got in the Way
+                  </p>
+                  <div 
+                    contentEditable
+                    suppressContentEditableWarning
+                    className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
+                  >
+                    {selectedCheckin.blocker}
+                  </div>
+                </div>
+              )}
+
+              {/* Extra Done */}
+              {selectedCheckin.extra_done && (
+                <div className="border-t border-white/20 pt-4">
+                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
+                    Extra Work
+                  </p>
+                  <div 
+                    contentEditable
+                    suppressContentEditableWarning
+                    className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
+                  >
+                    {selectedCheckin.extra_done}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setSelectedCheckin(null)}
+              className="w-full mt-6 px-4 py-2 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

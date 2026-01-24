@@ -5,13 +5,15 @@ import { Check, X } from 'lucide-react';
  * Timeline Component
  * 
  * Compact check-in history with minimum action status
+ * Click to view details
  */
 
 interface TimelineProps {
   checkins: Checkin[];
+  onCheckinClick?: (checkin: Checkin) => void;
 }
 
-export function Timeline({ checkins }: TimelineProps) {
+export function Timeline({ checkins, onCheckinClick }: TimelineProps) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -30,8 +32,9 @@ export function Timeline({ checkins }: TimelineProps) {
         
         return (
           <div 
-            key={checkin.id} 
-            className="glass-subtle rounded-xl p-3 transition-all hover:shadow-md"
+            key={checkin.id}
+            onClick={() => onCheckinClick?.(checkin)}
+            className="glass-subtle rounded-xl p-3 transition-all hover:shadow-md cursor-pointer hover:bg-white/40"
             style={{ animationDelay: `${index * 0.05}s` }}
           >
             <div className="flex items-center gap-3">

@@ -8,7 +8,6 @@
  * 1. "Did you do your minimum?" (prominently displayed)
  * 2. "Did you do more?" (optional)
  * 3. Friction slider
- * 4. Blockers (if didn't do minimum)
  */
 
 import { useState, useEffect, Suspense } from 'react';
@@ -34,7 +33,6 @@ function CheckinContent() {
   // Simplified form state - minimum action centered
   const [didMinimum, setDidMinimum] = useState<boolean | null>(null);
   const [progressNote, setProgressNote] = useState('');
-  const [blocker, setBlocker] = useState('');
   const [friction, setFriction] = useState(2);
 
   useEffect(() => {
@@ -48,7 +46,15 @@ function CheckinContent() {
   }, [router, goalId]);
 
   const handleSubmit = async () => {
-    if (!dashboard?.resolution || didMinimum === null) return;
+    if (!dashboard?.resolution) {
+      setError('Loading goal data... please wait.');
+      return;
+    }
+    
+    if (didMinimum === null) {
+      setError('Please select Yes or No before saving.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -57,8 +63,7 @@ function CheckinContent() {
       await api.createCheckin({
         resolution_id: dashboard.resolution.id,
         did_minimum_action: didMinimum,
-        extra_done: sanitizeText(progressNote),
-        blocker: blocker.trim() ? sanitizeText(blocker) : undefined,
+        extra_done: progressNote.trim() ? sanitizeText(progressNote) : undefined,
         friction: friction,
       });
       
@@ -202,24 +207,6 @@ function CheckinContent() {
             />
             <p className="text-xs text-neutral-400">
               📝 This helps track your progress over 90 days and builds your habit story.
-            </p>
-          </div>
-        )}
-
-        {/* Blocker section - only show if didn't do minimum */}
-        {didMinimum === false && (
-          <div className="glass-strong rounded-2xl p-6 space-y-4 animate-fade-in-up">
-            <label className="block text-sm font-medium text-neutral-600">
-              What got in the way? <span className="text-neutral-400 font-normal">(optional)</span>
-            </label>
-            <Input
-              value={blocker}
-              onChange={(e) => setBlocker(e.target.value)}
-              placeholder="e.g., Had an unexpected meeting"
-              maxLength={INPUT_LIMITS.BLOCKER_MAX_LENGTH}
-            />
-            <p className="text-xs text-neutral-400">
-              No judgment — understanding blockers helps us adjust your plan.
             </p>
           </div>
         )}

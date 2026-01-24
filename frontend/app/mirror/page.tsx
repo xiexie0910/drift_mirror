@@ -41,7 +41,7 @@ function MirrorContent() {
   const handleFeedback = async (helpful: boolean) => {
     if (!dashboard?.latest_mirror) return;
     try {
-      await api.submitFeedback(dashboard.latest_mirror.id, helpful);
+      await api.submitMirrorFeedback(dashboard.latest_mirror.id, helpful);
       setFeedbackGiven(true);
       setFeedbackError(false);
     } catch {
