@@ -400,13 +400,17 @@ export default function GoalDetailPage() {
                 size="sm"
                 onClick={async () => {
                   try {
-                    await fetch(`http://localhost:8000/resolutions/${goalId}/revert-plan`, {
+                    const response = await fetch(`http://localhost:8000/api/resolutions/${goalId}/revert-plan`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' }
                     });
-                    loadGoalDetails();
+                    if (!response.ok) {
+                      throw new Error('Failed to revert plan');
+                    }
+                    await loadGoalDetails();
                   } catch (err) {
                     console.error('Failed to revert:', err);
+                    alert('Failed to revert plan. Please try again.');
                   }
                 }}
                 className="text-neutral-500 hover:text-neutral-700 shrink-0"

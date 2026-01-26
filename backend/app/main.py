@@ -42,6 +42,8 @@ app = FastAPI(
     docs_url=None if IS_PRODUCTION else "/docs",
     redoc_url=None if IS_PRODUCTION else "/redoc",
     openapi_url=None if IS_PRODUCTION else "/openapi.json",
+    # Prevent automatic trailing slash redirects
+    redirect_slashes=False,
 )
 
 # Security: Trusted Host middleware (prevents host header attacks)
