@@ -37,6 +37,11 @@ export default function GoalDetailPage() {
   // Checkin detail modal state
   const [selectedCheckin, setSelectedCheckin] = useState<Checkin | null>(null);
   
+  // Minimum action editing state
+  const [isEditingMinAction, setIsEditingMinAction] = useState(false);
+  const [minActionText, setMinActionText] = useState('');
+  const [savingMinAction, setSavingMinAction] = useState(false);
+  
   // Progress summary state
   const [showSummary, setShowSummary] = useState(false);
   const [summary, setSummary] = useState<ProgressSummaryResponse | null>(null);
@@ -55,6 +60,7 @@ export default function GoalDetailPage() {
         return;
       }
       setDashboard(data);
+      setMinActionText(data.resolution.minimum_action_text || '');
     } catch {
       router.push('/dashboard');
     } finally {
@@ -117,7 +123,33 @@ export default function GoalDetailPage() {
       setSummaryLoading(false);
     }
   };
+const handleSaveMinAction = async () => {
+    if (!minActionText.trim()) {
+      alert('Minimum action cannot be empty');
+      return;
+    }
+    
+    setSavingMinAction(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/resolutions/${goalId}/minimum-action`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minimum_action_text: minActionText.trim() })
+      });
+      
+      if (!response.ok) throw new Error('Failed to update minimum action');
+      
+      setIsEditingMinAction(false);
+      await loadGoalDetails();
+    } catch (err) {
+      console.error('Failed to update minimum action:', err);
+      alert('Failed to update minimum action. Please try again.');
+    } finally {
+      setSavingMinAction(false);
+    }
+  };
 
+  
   // Loading state
   if (loading) {
     return (
@@ -198,11 +230,47 @@ export default function GoalDetailPage() {
                   <Zap className="w-4 h-4 text-teal-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider font-medium mb-1">
-                    Minimum Action
-                  </p>
-                  <p className="text-neutral-700">{resolution.minimum_action_text}</p>
-                  <p className="text-xs text-neutral-500 mt-1">{current_plan?.min_minutes ?? resolution.min_minutes} min</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider font-medium">
+                      Minimum Action
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (isEditingMinAction) {
+                          setIsEditingMinAction(false);
+                          setMinActionText(resolution.minimum_action_text || '');
+                        } else {
+                          setIsEditingMinAction(true);
+                        }
+                      }}
+                      className="text-xs text-teal-600 hover:text-teal-700 font-medium transition-colors"
+                    >
+                      {isEditingMinAction ? 'Cancel' : 'Edit'}
+                    </button>
+                  </div>
+                  {isEditingMinAction ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={minActionText}
+                        onChange={(e) => setMinActionText(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg glass-subtle text-neutral-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 resize-none"
+                        rows={2}
+                        placeholder="Describe your minimum action..."
+                      />
+                      <button
+                        onClick={handleSaveMinAction}
+                        disabled={savingMinAction || !minActionText.trim()}
+                        className="px-3 py-1.5 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingMinAction ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-neutral-700">{resolution.minimum_action_text}</p>
+                      <p className="text-xs text-neutral-500 mt-1">{current_plan?.min_minutes ?? resolution.min_minutes} min</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

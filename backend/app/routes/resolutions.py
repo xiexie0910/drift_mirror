@@ -155,6 +155,23 @@ async def get_insight_actions(resolution_id: int, db: Session = Depends(get_db))
         InsightAction.resolution_id == resolution_id
     ).order_by(InsightAction.created_at.desc()).all()
 
+@router.patch("/{resolution_id}/minimum-action")
+async def update_minimum_action(resolution_id: int, data: dict, db: Session = Depends(get_db)):
+    """Update the minimum action text for a resolution."""
+    resolution = db.query(Resolution).filter(Resolution.id == resolution_id).first()
+    if not resolution:
+        raise HTTPException(status_code=404, detail="Resolution not found")
+    
+    minimum_action_text = data.get('minimum_action_text', '').strip()
+    if not minimum_action_text:
+        raise HTTPException(status_code=400, detail="Minimum action text cannot be empty")
+    
+    resolution.minimum_action_text = minimum_action_text
+    db.commit()
+    db.refresh(resolution)
+    
+    return {"message": "Minimum action updated", "minimum_action_text": resolution.minimum_action_text}
+
 @router.delete("/{resolution_id}/")
 async def delete_resolution(resolution_id: int, db: Session = Depends(get_db)):
     resolution = db.query(Resolution).filter(Resolution.id == resolution_id).first()

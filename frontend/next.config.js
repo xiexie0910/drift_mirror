@@ -50,10 +50,10 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires unsafe-inline/eval in dev
-              "style-src 'self' 'unsafe-inline'", // Tailwind requires inline styles
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind + Google Fonts
               "img-src 'self' data: blob:",
-              "font-src 'self'",
-              "connect-src 'self'",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000", // API in development
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

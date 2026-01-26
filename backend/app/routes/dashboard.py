@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models import Resolution, Plan, Checkin, Signal, MirrorReport, Feedback
+from app.models import Resolution, Plan, Checkin, Signal, MirrorReport, Feedback, InsightAction
 from app.schemas import (
     DashboardResponse, MetricsResponse, ResolutionResponse, PlanResponse, 
     CheckinResponse, MirrorReportResponse, FeedbackCreate, ProgressSummaryResponse
@@ -140,12 +140,27 @@ def _safe_checkin_response(checkin: Checkin) -> CheckinResponse:
         })
 
 
-def _safe_mirror_response(mirror: MirrorReport | None) -> MirrorReportResponse | None:
+def _safe_mirror_response(mirror: MirrorReport | None, db: Session = None) -> MirrorReportResponse | None:
     """Safely validate mirror report JSON; return None if invalid."""
     if not mirror:
         return None
     try:
-        return MirrorReportResponse.model_validate(mirror)
+        response = MirrorReportResponse.model_validate(mirror)
+        
+        # Filter out actionable suggestions that user has already acted upon
+        if response.actionable_suggestions and db:
+            acted_summaries = set(
+                action.insight_summary
+                for action in db.query(InsightAction).filter(
+                    InsightAction.mirror_report_id == mirror.id
+                ).all()
+            )
+            response.actionable_suggestions = [
+                suggestion for suggestion in response.actionable_suggestions
+                if suggestion.get('suggestion') not in acted_summaries
+            ]
+        
+        return response
     except Exception:
         return None
 
@@ -203,7 +218,7 @@ async def get_dashboard(db: Session = Depends(get_db)):
         current_plan=PlanResponse.model_validate(current_plan) if current_plan else None,
         recent_checkins=[_safe_checkin_response(c) for c in checkins],
         metrics=metrics,
-        latest_mirror=_safe_mirror_response(latest_mirror),
+        latest_mirror=_safe_mirror_response(latest_mirror, db),
         drift_triggered=metrics.drift_score > 0.4 and metrics.total_checkins >= 3
     )
 
@@ -240,7 +255,7 @@ async def get_dashboard_for_resolution(resolution_id: int, db: Session = Depends
         current_plan=PlanResponse.model_validate(current_plan) if current_plan else None,
         recent_checkins=[_safe_checkin_response(c) for c in checkins],
         metrics=metrics,
-        latest_mirror=_safe_mirror_response(latest_mirror),
+        latest_mirror=_safe_mirror_response(latest_mirror, db),
         drift_triggered=metrics.drift_score > 0.4 and metrics.total_checkins >= 3
     )
 

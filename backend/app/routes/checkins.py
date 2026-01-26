@@ -160,28 +160,36 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
     plan_updated = False
     
     if drift_triggered:
-        # Compose mirror report with frequency data
-        mirror_data = await compose_mirror(resolution, all_signals, drift_score, db, all_checkins)
+        try:
+            # Compose mirror report with frequency data
+            mirror_data = await compose_mirror(resolution, all_signals, drift_score, db, all_checkins)
+            
+            # Generate actionable suggestions based on drift patterns
+            actionable_suggestions = generate_actionable_suggestions(
+                all_checkins, current_plan if current_plan else None, drift_score, frequency_stats
+            )
+            
+            # Store mirror report with new personalized fields
+            mirror = MirrorReport(
+                resolution_id=data.resolution_id,
+                findings=mirror_data["findings"],
+                counterfactual=mirror_data.get("counterfactual"),
+                drift_score=drift_score,
+                actionable_suggestions=actionable_suggestions,
+                recurring_blockers=mirror_data.get("recurring_blockers"),
+                strength_pattern=mirror_data.get("strength_pattern")
+            )
+        except Exception as e:
+            # Log the error but don't fail the check-in
+            print(f"⚠️  Mirror composition failed: {str(e)}")
+            # Don't create a mirror report, but check-in will still succeed
+            mirror = None
         
-        # Generate actionable suggestions based on drift patterns
-        actionable_suggestions = generate_actionable_suggestions(
-            all_checkins, current_plan if current_plan else None, drift_score, frequency_stats
-        )
-        
-        # Store mirror report with new personalized fields
-        mirror = MirrorReport(
-            resolution_id=data.resolution_id,
-            findings=mirror_data["findings"],
-            counterfactual=mirror_data.get("counterfactual"),
-            drift_score=drift_score,
-            actionable_suggestions=actionable_suggestions,
-            recurring_blockers=mirror_data.get("recurring_blockers"),
-            strength_pattern=mirror_data.get("strength_pattern")
-        )
-        db.add(mirror)
-        db.commit()
-        db.refresh(mirror)
-        mirror_report = mirror
+        if mirror:
+            db.add(mirror)
+            db.commit()
+            db.refresh(mirror)
+            mirror_report = mirror
         
         # Compute plan adjustment
         current_plan = db.query(Plan).filter(
@@ -221,21 +229,54 @@ async def extract_signals(
     actual: str,
     completed: bool
 ) -> List[dict]:
-    """Extract signals using LLM with fallback to stub."""
-    prompt = SIGNAL_EXTRACTOR_PROMPT.format(
-        did_minimum=data.did_minimum_action,
-        extra_done=data.extra_done or "None",
-        blocker=data.blocker or "None",
-        friction=data.friction
-    )
+    """Extract signals using simple rule-based logic (no LLM needed)."""
+    signals = []
     
-    response = await call_llm(prompt, SIGNAL_EXTRACTOR_SYSTEM)
-    result = extract_json_from_response(response)
+    # Signal 1: Completion status
+    if data.did_minimum_action:
+        signals.append({
+            "signal_type": "completion",
+            "content": "Completed minimum action",
+            "severity": 0.1  # Low severity (good)
+        })
+    else:
+        signals.append({
+            "signal_type": "miss",
+            "content": f"Missed minimum action: {data.blocker or 'No reason given'}",
+            "severity": 0.7  # Higher severity
+        })
     
-    if result and "signals" in result:
-        return result["signals"][:3]
+    # Signal 2: Friction level
+    if data.friction >= 3:
+        signals.append({
+            "signal_type": "friction",
+            "content": "High friction reported",
+            "severity": 0.8
+        })
+    elif data.friction == 1:
+        signals.append({
+            "signal_type": "ease",
+            "content": "Low friction - task felt easy",
+            "severity": 0.2
+        })
     
-    raise HTTPException(status_code=502, detail="Gemini failed to extract signals")
+    # Signal 3: Extra effort
+    if data.extra_done:
+        signals.append({
+            "signal_type": "extra",
+            "content": f"Extra done: {data.extra_done}",
+            "severity": 0.1  # Good signal
+        })
+    
+    # Signal 4: Blocker pattern
+    if data.blocker:
+        signals.append({
+            "signal_type": "blocker",
+            "content": data.blocker,
+            "severity": 0.6
+        })
+    
+    return signals[:3]  # Return top 3 most relevant
 
 async def compose_mirror(
     resolution: Resolution, 
