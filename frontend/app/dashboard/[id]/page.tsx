@@ -400,7 +400,7 @@ export default function GoalDetailPage() {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const response = await fetch(`http://localhost:8000/api/resolutions/${goalId}/revert-plan`, {
+                    const response = await fetch(`/api/resolutions/${goalId}/revert-plan`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' }
                     });
