@@ -210,26 +210,64 @@ function MirrorContent() {
                 />
               </div>
               
-              {/* Evidence (expanded) */}
-              {expandedFindings.includes(idx) && finding.evidence.length > 0 && (
-                <div className="mt-5 pt-4 border-t border-white/30">
-                  <p className="text-xs font-medium text-teal-600 mb-3">Evidence:</p>
-                  <ul className="space-y-2">
-                    {finding.evidence.map((ev, i) => (
-                      <li 
-                        key={i} 
-                        className="text-sm text-neutral-600 flex items-start gap-3 glass-quiet p-3 rounded-xl"
-                      >
-                        <span className="text-teal-500 mt-0.5">•</span>
-                        <span>{ev}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {/* Evidence and Root Cause (expanded) */}
+              {expandedFindings.includes(idx) && (
+                <div className="mt-5 pt-4 border-t border-white/30 space-y-4">
+                  {finding.evidence.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-teal-600 mb-3">Evidence:</p>
+                      <ul className="space-y-2">
+                        {finding.evidence.map((ev, i) => (
+                          <li 
+                            key={i} 
+                            className="text-sm text-neutral-600 flex items-start gap-3 glass-quiet p-3 rounded-xl"
+                          >
+                            <span className="text-teal-500 mt-0.5">•</span>
+                            <span>{ev}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {/* Root Cause Hypothesis */}
+                  {finding.root_cause_hypothesis && (
+                    <div className="glass-subtle p-4 rounded-xl border-l-3 border-l-teal-400">
+                      <p className="text-xs font-medium text-teal-600 mb-2">Why this might be happening:</p>
+                      <p className="text-sm text-neutral-700 italic">{finding.root_cause_hypothesis}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           ))}
         </section>
+
+        {/* Recurring Blockers */}
+        {mirror.recurring_blockers && mirror.recurring_blockers.length > 0 && (
+          <section className="glass-subtle rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+            <h2 className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-3">
+              Recurring Blockers
+            </h2>
+            <ul className="space-y-2">
+              {mirror.recurring_blockers.map((blocker, idx) => (
+                <li key={idx} className="flex items-center gap-2 text-sm text-neutral-700">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  {blocker}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Strength Pattern - What's Working */}
+        {mirror.strength_pattern && (
+          <section className="glass-strong rounded-2xl p-5 border-l-4 border-l-emerald-400 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <h2 className="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-3">
+              What&apos;s Working
+            </h2>
+            <p className="text-neutral-700">{mirror.strength_pattern}</p>
+          </section>
+        )}
 
         {/* Actionable Suggestions */}
         {mirror.actionable_suggestions && mirror.actionable_suggestions.length > 0 && (

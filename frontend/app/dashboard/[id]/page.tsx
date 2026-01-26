@@ -178,15 +178,15 @@ export default function GoalDetailPage() {
             </div>
           )}
           
-          {/* Goal Settings */}
+          {/* Goal Settings - always show current plan values */}
           <div className="flex items-center gap-4 mt-5 pt-4 border-t border-white/20">
             <div className="flex items-center gap-2 text-sm text-neutral-600">
               <Calendar className="w-4 h-4 text-teal-500" />
-              <span>{resolution.frequency_per_week}x per week</span>
+              <span>{current_plan?.frequency_per_week ?? resolution.frequency_per_week}x per week</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-neutral-600">
               <Clock className="w-4 h-4 text-teal-500" />
-              <span>{resolution.min_minutes} min minimum</span>
+              <span>{current_plan?.min_minutes ?? resolution.min_minutes} min minimum</span>
             </div>
           </div>
           
@@ -202,7 +202,7 @@ export default function GoalDetailPage() {
                     Minimum Action
                   </p>
                   <p className="text-neutral-700">{resolution.minimum_action_text}</p>
-                  <p className="text-xs text-neutral-500 mt-1">{resolution.min_minutes} min</p>
+                  <p className="text-xs text-neutral-500 mt-1">{current_plan?.min_minutes ?? resolution.min_minutes} min</p>
                 </div>
               </div>
             </div>
@@ -312,9 +312,16 @@ export default function GoalDetailPage() {
                 <div className="p-2 bg-teal-500/10 rounded-lg">
                   <Sparkles className="w-5 h-5 text-teal-600" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="font-medium text-neutral-700">Pattern detected</p>
-                  <p className="text-sm text-neutral-500 mt-0.5">The system noticed some drift</p>
+                  {/* Show first finding preview */}
+                  {latest_mirror.findings?.[0] ? (
+                    <p className="text-sm text-neutral-600 mt-0.5 line-clamp-2">
+                      {latest_mirror.findings[0].finding}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-neutral-500 mt-0.5">The system noticed some drift</p>
+                  )}
                 </div>
               </div>
               <Button
@@ -323,9 +330,16 @@ export default function GoalDetailPage() {
                 size="sm"
                 className="shrink-0 gap-1"
               >
-                View <ArrowRight className="w-3 h-3" />
+                Details <ArrowRight className="w-3 h-3" />
               </Button>
             </div>
+            {/* Show strength pattern if available */}
+            {latest_mirror.strength_pattern && (
+              <div className="mt-3 pt-3 border-t border-white/20">
+                <p className="text-xs text-teal-600 font-medium">What&apos;s working</p>
+                <p className="text-sm text-neutral-600 mt-1">{latest_mirror.strength_pattern}</p>
+              </div>
+            )}
             {/* Drift explanation */}
             <p className="text-xs text-neutral-500 mt-3 pt-3 border-t border-white/20">
               Drift doesn&apos;t mean failure. It just means the plan and real life are out of sync.
@@ -358,77 +372,49 @@ export default function GoalDetailPage() {
           </div>
         )}
 
-        {/* Current Plan - unified view */}
-        {current_plan && (
-          <section className="glass-strong rounded-2xl p-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-medium text-teal-600 uppercase tracking-wider">
-                {current_plan.version > 1 ? 'Adjusted Plan' : 'Current Plan'}
-              </h2>
-              {/* Weekly Progress Badge */}
-              <div className="flex items-center gap-2 px-3 py-1.5 glass-subtle rounded-full">
-                <Calendar className="w-3.5 h-3.5 text-teal-500" />
-                <span className={`text-sm font-medium ${
-                  metrics.this_week_count >= metrics.target_frequency 
-                    ? 'text-teal-600' 
-                    : 'text-neutral-600'
-                }`}>
-                  {metrics.this_week_count}/{metrics.target_frequency} this week
-                </span>
-                {metrics.this_week_count >= metrics.target_frequency && (
-                  <span className="text-teal-500">✓</span>
-                )}
+        {/* Plan Adjusted Notice - only show when plan differs from original */}
+        {current_plan && current_plan.version > 1 && (
+          resolution.frequency_per_week !== current_plan.frequency_per_week ||
+          resolution.min_minutes !== current_plan.min_minutes
+        ) && (
+          <section className="glass-subtle rounded-2xl p-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-amber-500/10 rounded-lg">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-700">Plan adjusted from original</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    {resolution.frequency_per_week !== current_plan.frequency_per_week && 
+                      `${resolution.frequency_per_week}x → ${current_plan.frequency_per_week}x/week`}
+                    {resolution.frequency_per_week !== current_plan.frequency_per_week && 
+                     resolution.min_minutes !== current_plan.min_minutes && ' • '}
+                    {resolution.min_minutes !== current_plan.min_minutes && 
+                      `${resolution.min_minutes} → ${current_plan.min_minutes} min`}
+                  </p>
+                </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await fetch(`http://localhost:8000/resolutions/${goalId}/revert-plan`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' }
+                    });
+                    loadGoalDetails();
+                  } catch (err) {
+                    console.error('Failed to revert:', err);
+                  }
+                }}
+                className="text-neutral-500 hover:text-neutral-700 shrink-0"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Revert
+              </Button>
             </div>
-            
-            {/* Show changes inline if plan was adjusted */}
-            {current_plan.version > 1 ? (
-              <div className="space-y-3">
-                {resolution.frequency_per_week !== current_plan.frequency_per_week && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-neutral-500 w-20">Frequency</span>
-                    <span className="text-neutral-400 line-through">{resolution.frequency_per_week}x/week</span>
-                    <ArrowRight className="w-4 h-4 text-neutral-300" />
-                    <span className="text-teal-600 font-medium">{current_plan.frequency_per_week}x/week</span>
-                  </div>
-                )}
-                {resolution.min_minutes !== current_plan.min_minutes && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-neutral-500 w-20">Duration</span>
-                    <span className="text-neutral-400 line-through">{resolution.min_minutes} min</span>
-                    <ArrowRight className="w-4 h-4 text-neutral-300" />
-                    <span className="text-teal-600 font-medium">{current_plan.min_minutes} min</span>
-                  </div>
-                )}
-                {resolution.time_window !== current_plan.time_window && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-neutral-500 w-20">Time</span>
-                    <span className="text-neutral-400 line-through">{resolution.time_window}</span>
-                    <ArrowRight className="w-4 h-4 text-neutral-300" />
-                    <span className="text-teal-600 font-medium">{current_plan.time_window}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <span className="px-4 py-2 glass-subtle rounded-xl text-neutral-700 font-medium text-sm">
-                  {current_plan.frequency_per_week}x/week
-                </span>
-                <span className="px-4 py-2 glass-subtle rounded-xl text-neutral-700 font-medium text-sm">
-                  {current_plan.min_minutes} min
-                </span>
-                <span className="px-4 py-2 glass-subtle rounded-xl text-neutral-700 font-medium text-sm">
-                  {current_plan.time_window}
-                </span>
-              </div>
-            )}
-            
-            {current_plan.recovery_step && (
-              <div className="glass-quiet rounded-xl p-4 mt-4">
-                <span className="text-teal-600 text-sm font-medium">Suggestion:</span>
-                <p className="text-sm text-neutral-600 mt-1">{current_plan.recovery_step}</p>
-              </div>
-            )}
           </section>
         )}
 

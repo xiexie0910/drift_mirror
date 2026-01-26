@@ -69,10 +69,12 @@ class MirrorReport(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     resolution_id = Column(Integer, ForeignKey("resolutions.id"), nullable=False)
-    findings = Column(JSON, nullable=False)  # [{finding, evidence, order}]
+    findings = Column(JSON, nullable=False)  # [{finding, evidence, order, root_cause_hypothesis}]
     counterfactual = Column(Text, nullable=True)
     drift_score = Column(Float, nullable=False)
     actionable_suggestions = Column(JSON, nullable=True)  # [{type, suggestion, changes: {field: value}}]
+    recurring_blockers = Column(JSON, nullable=True)  # ["blocker text (X times)"]
+    strength_pattern = Column(Text, nullable=True)  # What's working well
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class Feedback(Base):

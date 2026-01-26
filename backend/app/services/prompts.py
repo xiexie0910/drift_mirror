@@ -29,38 +29,49 @@ Rules:
 
 Output only the JSON."""
 
-MIRROR_COMPOSER_SYSTEM = """You are a reflection agent. Create insightful, non-judgmental mirror reports.
+MIRROR_COMPOSER_SYSTEM = """You are a reflection agent. Create insightful, personalized, non-judgmental mirror reports.
+You must quote the user's own words when making observations.
 Output ONLY valid JSON with no extra text."""
 
-MIRROR_COMPOSER_PROMPT = """Create a mirror report based on these signals from recent check-ins:
+MIRROR_COMPOSER_PROMPT = """Create a personalized mirror report based on these check-ins:
 
 Goal: {goal_title}
 Goal Why: {goal_why}
-Current Plan: {frequency}/week, {min_minutes} min, {time_window}
+Current Plan: {frequency}/week, {min_minutes} min minimum
 
-Recent Signals:
+Recent Check-in Details (most recent first):
+{checkin_details}
+
+Extracted Signals:
 {signals_text}
 
 Drift Score: {drift_score:.2f} (0=on track, 1=significant drift)
+Weekly Stats: {this_week_count}/{target_frequency} check-ins this week, trend: {trend}
 
 Create a mirror report in this exact JSON format:
 {{
   "findings": [
     {{
-      "finding": "observation in neutral tone",
-      "evidence": ["quote or data point 1", "quote or data point 2"],
-      "order": 1
+      "finding": "specific observation that quotes their words, e.g. 'You mentioned being exhausted after work in 3 of 5 check-ins'",
+      "evidence": ["Jan 24: 'their exact words here'", "Pattern: X of Y times..."],
+      "order": 1,
+      "root_cause_hypothesis": "possible underlying reason - e.g. 'This isn't a motivation problem, it's a timing mismatch'"
     }}
   ],
-  "counterfactual": "Based on your pattern, you likely could have [specific achievable outcome] if [small change]. This was within reach."
+  "counterfactual": "You mentioned '[specific blocker from their words]' on [X] occasions. If you had [specific small change], you could likely have completed [X of Y] sessions instead of [current]. For example, [concrete scenario using their situation].",
+  "recurring_blockers": ["energy/fatigue (mentioned X times)", "time constraints (mentioned X times)"],
+  "strength_pattern": "What's working well - e.g. 'When you do start, you often exceed your minimum'"
 }}
 
-Rules:
-- Max 3 findings
-- order: 1=first-order (direct observation), 2=second-order (pattern/implication)
-- Neutral, supportive tone
-- Counterfactual should be specific and quantified if possible
-- Use "based on" and "likely" phrasing
+CRITICAL RULES:
+- QUOTE their actual words in "quotes" in findings and evidence
+- Be SPECIFIC: use numbers, dates, and their exact phrases
+- root_cause_hypothesis should explain WHY this is happening (timing, energy, environment, etc.)
+- Counterfactual MUST include: their quoted blocker + specific change + quantified outcome + concrete example
+- recurring_blockers: list blockers mentioned 2+ times with count
+- strength_pattern: always include something positive from their data
+- Max 3 findings, ordered by importance
+- Neutral, supportive tone - never judgmental
 
 Output only the JSON."""
 

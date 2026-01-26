@@ -7,10 +7,30 @@ from app.schemas import (
     CheckinResponse, MirrorReportResponse, FeedbackCreate, ProgressSummaryResponse
 )
 from app.services.drift import compute_drift_score, get_weekly_frequency_stats
-from app.services.plan_adjuster import compute_minimum_action_scaling
 from app.services.progress_summary import generate_progress_summary
+from typing import Tuple, Optional
 
 router = APIRouter()
+
+
+def compute_minimum_action_scaling(
+    minimum_action_streak: int,
+    minimum_action_rate: float,
+    avg_friction: float
+) -> Tuple[bool, Optional[str]]:
+    """
+    Determine if user should be offered a Momentum Minimum.
+    Returns (suggest_momentum, suggestion_text)
+    """
+    if (minimum_action_streak >= 5 and 
+        minimum_action_rate >= 0.8 and 
+        avg_friction <= 2.0):
+        return True, "You've been consistent. Consider adding a bit more."
+    
+    if minimum_action_rate < 0.6 or avg_friction >= 3.0:
+        return False, None
+    
+    return False, None
 
 
 def calculate_metrics(checkins, all_signals, target_frequency: int = 3):

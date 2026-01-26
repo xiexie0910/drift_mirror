@@ -5,7 +5,6 @@ from app.db import get_db
 from app.models import Resolution, Plan, Checkin, Signal, MirrorReport
 from app.schemas import CheckinCreate, CheckinResponse, SignalResponse, MirrorReportResponse, DebugPayload
 from app.services.drift import compute_drift_score, should_trigger_mirror, get_drift_rules_applied, get_weekly_frequency_stats
-from app.services.plan_adjuster import compute_plan_adjustment, create_new_plan_version
 from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.prompts import SIGNAL_EXTRACTOR_SYSTEM, SIGNAL_EXTRACTOR_PROMPT, MIRROR_COMPOSER_SYSTEM, MIRROR_COMPOSER_PROMPT
 
@@ -20,6 +19,7 @@ def generate_actionable_suggestions(
     """
     Generate actionable suggestions based on drift patterns.
     Returns a list of suggestions with type, message, and suggested changes.
+    Only suggests changes that differ from the current plan.
     """
     suggestions = []
     
@@ -34,15 +34,17 @@ def generate_actionable_suggestions(
     completion_rate = sum(1 for c in recent if c.did_minimum_action) / n
     missed_count = sum(1 for c in recent if not c.did_minimum_action)
     
-    # Suggestion 1: High friction → reduce duration
-    if avg_friction >= 2.5:
+    # Suggestion 1: High friction → reduce duration (only if not already at minimum)
+    if avg_friction >= 2.5 and current_plan.min_minutes > 5:
         new_mins = max(5, current_plan.min_minutes - 5)
-        suggestions.append({
-            "type": "reduce_duration",
-            "suggestion": f"Your sessions feel harder than they should. Try reducing from {current_plan.min_minutes} to {new_mins} minutes to build momentum.",
-            "changes": {"min_minutes": new_mins},
-            "reason": f"Average friction is {avg_friction:.1f}/3.0"
-        })
+        # Only suggest if it's actually different
+        if new_mins != current_plan.min_minutes:
+            suggestions.append({
+                "type": "reduce_duration",
+                "suggestion": f"Your sessions feel harder than they should. Try reducing from {current_plan.min_minutes} to {new_mins} minutes to build momentum.",
+                "changes": {"min_minutes": new_mins},
+                "reason": f"Average friction is {avg_friction:.1f}/3.0"
+            })
     
     # Suggestion 2: Low completion → simplify minimum action
     if completion_rate < 0.5 and n >= 3:
@@ -53,29 +55,19 @@ def generate_actionable_suggestions(
             "reason": f"Only {int(completion_rate * 100)}% completion rate"
         })
     
-    # Suggestion 3: Below weekly target → adjust frequency
-    if frequency_stats.get('this_week_rate', 0) < 0.6 and frequency_stats.get('trend') == 'declining':
+    # Suggestion 3: Below weekly target → adjust frequency (only if not already at minimum)
+    if frequency_stats.get('this_week_rate', 0) < 0.6 and frequency_stats.get('trend') == 'declining' and current_plan.frequency_per_week > 1:
         new_freq = max(1, current_plan.frequency_per_week - 1)
-        suggestions.append({
-            "type": "reduce_frequency",
-            "suggestion": f"You're hitting {frequency_stats['this_week_count']}/{frequency_stats['this_week_target']} check-ins this week. Adjusting to {new_freq}x per week might feel more sustainable.",
-            "changes": {"frequency_per_week": new_freq},
-            "reason": f"Weekly rate: {int(frequency_stats['this_week_rate'] * 100)}%"
-        })
+        # Only suggest if it's actually different
+        if new_freq != current_plan.frequency_per_week:
+            suggestions.append({
+                "type": "reduce_frequency",
+                "suggestion": f"You're hitting {frequency_stats['this_week_count']}/{frequency_stats['this_week_target']} check-ins this week. Adjusting to {new_freq}x per week might feel more sustainable.",
+                "changes": {"frequency_per_week": new_freq},
+                "reason": f"Weekly rate: {int(frequency_stats['this_week_rate'] * 100)}%"
+            })
     
-    # Suggestion 4: Pattern of misses → try different time
-    if missed_count >= 2:
-        time_options = ["morning", "afternoon", "evening", "night"]
-        current_idx = time_options.index(current_plan.time_window) if current_plan.time_window in time_options else 0
-        next_time = time_options[(current_idx + 1) % len(time_options)]
-        suggestions.append({
-            "type": "change_time",
-            "suggestion": f"You've missed {missed_count} of your last {n} attempts. Would trying {next_time} instead of {current_plan.time_window} work better with your schedule?",
-            "changes": {"time_window": next_time},
-            "reason": f"{missed_count}/{n} recent misses"
-        })
-    
-    # Suggestion 5: High drift + high friction → recovery mode
+    # Suggestion 4: High drift + high friction → recovery mode
     if drift_score > 0.6 and avg_friction >= 2.5:
         suggestions.append({
             "type": "recovery_mode",
@@ -176,13 +168,15 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
             all_checkins, current_plan if current_plan else None, drift_score, frequency_stats
         )
         
-        # Store mirror report
+        # Store mirror report with new personalized fields
         mirror = MirrorReport(
             resolution_id=data.resolution_id,
             findings=mirror_data["findings"],
             counterfactual=mirror_data.get("counterfactual"),
             drift_score=drift_score,
-            actionable_suggestions=actionable_suggestions
+            actionable_suggestions=actionable_suggestions,
+            recurring_blockers=mirror_data.get("recurring_blockers"),
+            strength_pattern=mirror_data.get("strength_pattern")
         )
         db.add(mirror)
         db.commit()
@@ -194,38 +188,7 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
             Plan.resolution_id == data.resolution_id
         ).order_by(Plan.version.desc()).first()
         
-        if current_plan:
-            n = min(len(all_checkins), 10)
-            recent = all_checkins[:n]
-            avg_friction = sum(c.friction for c in recent) / n
-            completion_rate = sum(1 for c in recent if c.completed) / n
-            
-            # Calculate minimum_action_rate for priority-based adjustment
-            min_action_count = sum(
-                1 for c in recent 
-                if getattr(c, 'did_minimum_action', None) or c.completed
-            )
-            minimum_action_rate = min_action_count / n if n > 0 else 0
-            
-            # Compute what changes would be suggested (no longer auto-applied)
-            # User must now explicitly accept suggestions via the Insight Action system
-            changes, adjustment_reason = compute_plan_adjustment(
-                current_plan, 
-                drift_score, 
-                avg_friction, 
-                completion_rate,
-                minimum_action_rate,
-                recent
-            )
-            
-            # DISABLED: Auto-apply removed - user must accept suggestions via InsightCard
-            # Only create new plan for actual parameter changes (not simplify_minimum_action flag)
-            # param_changes = {k: v for k, v in changes.items() if k != "simplify_minimum_action"}
-            # if param_changes:
-            #     create_new_plan_version(
-            #         data.resolution_id, current_plan, param_changes, adjustment_reason
-            #     )
-            #     plan_updated = True
+        # Plan adjustment computation removed - user handles changes via InsightCard
     
     # Build debug payload
     stored_signals = db.query(Signal).filter(Signal.checkin_id == checkin.id).all()
@@ -281,7 +244,7 @@ async def compose_mirror(
     db: Session,
     all_checkins: List[Checkin] = None
 ) -> dict:
-    """Compose mirror report using LLM with fallback to stub."""
+    """Compose mirror report using LLM with enriched check-in data."""
     # Get current plan
     plan = db.query(Plan).filter(
         Plan.resolution_id == resolution.id
@@ -291,7 +254,33 @@ async def compose_mirror(
     
     # Get frequency stats for data-driven findings
     frequency_stats = get_weekly_frequency_stats(all_checkins or [], target_frequency)
-    recent_checkins = (all_checkins or [])[:5]
+    recent_checkins = (all_checkins or [])[:7]  # Last 7 check-ins for context
+    
+    # Build detailed check-in content with user's actual words
+    checkin_details = []
+    for c in recent_checkins:
+        # Format date
+        if hasattr(c.created_at, 'strftime'):
+            date_str = c.created_at.strftime("%b %d")
+        else:
+            date_str = str(c.created_at)[:10]
+        
+        # Build status and friction
+        status = "✓ Completed" if c.did_minimum_action else "✗ Missed"
+        friction_labels = {1: "Easy", 2: "Medium", 3: "Hard"}
+        friction_str = friction_labels.get(c.friction, "Unknown")
+        
+        detail = f"[{date_str}] {status} | Friction: {friction_str}"
+        
+        # Add blocker with quotes
+        if c.blocker:
+            detail += f' | Blocker: "{c.blocker}"'
+        
+        # Add extra done with quotes
+        if c.extra_done:
+            detail += f' | Extra: "{c.extra_done}"'
+        
+        checkin_details.append(detail)
     
     # Format signals for prompt
     signals_text = "\n".join([
@@ -304,9 +293,12 @@ async def compose_mirror(
         goal_why=resolution.why or "Not specified",
         frequency=target_frequency,
         min_minutes=plan.min_minutes if plan else resolution.min_minutes,
-        time_window=plan.time_window if plan else resolution.time_window,
-        signals_text=signals_text,
-        drift_score=drift_score
+        checkin_details="\n".join(checkin_details) if checkin_details else "No check-ins yet",
+        signals_text=signals_text if signals_text else "No signals extracted yet",
+        drift_score=drift_score,
+        this_week_count=frequency_stats.get('this_week_count', 0),
+        target_frequency=target_frequency,
+        trend=frequency_stats.get('trend', 'stable')
     )
     
     response = await call_llm(prompt, MIRROR_COMPOSER_SYSTEM)

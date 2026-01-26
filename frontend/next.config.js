@@ -64,22 +64,22 @@ const nextConfig = {
     ];
   },
 
+  // Disable trailing slash redirect issues
+  trailingSlash: false,
+  skipTrailingSlashRedirect: true,
+
   // API proxy - backend not directly exposed to client
-  // Use beforeFiles to ensure rewrites happen before Next.js processing
   async rewrites() {
-    return {
-      beforeFiles: [
-        // Rewrite API calls to backend - preserve trailing slashes
-        {
-          source: '/api/:path*/',
-          destination: 'http://127.0.0.1:8000/api/:path*/',
-        },
-        {
-          source: '/api/:path*',
-          destination: 'http://127.0.0.1:8000/api/:path*/',
-        },
-      ],
-    };
+    return [
+      {
+        source: '/api/:path*/',
+        destination: 'http://127.0.0.1:8000/api/:path*/',
+      },
+      {
+        source: '/api/:path*',
+        destination: 'http://127.0.0.1:8000/api/:path*',
+      },
+    ];
   },
 };
 

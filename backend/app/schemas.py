@@ -77,6 +77,7 @@ class FindingSchema(BaseModel):
     finding: str
     evidence: List[str]
     order: int  # 1=first-order, 2=second-order
+    root_cause_hypothesis: Optional[str] = None  # Why this pattern exists
 
 class MirrorReportResponse(BaseModel):
     id: int
@@ -84,6 +85,8 @@ class MirrorReportResponse(BaseModel):
     counterfactual: Optional[str]
     drift_score: float
     actionable_suggestions: Optional[List[dict]] = None
+    recurring_blockers: Optional[List[str]] = None  # Blockers mentioned 2+ times
+    strength_pattern: Optional[str] = None  # What's working well
     created_at: datetime
     
     class Config:

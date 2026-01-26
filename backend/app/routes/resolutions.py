@@ -57,6 +57,38 @@ async def get_current_plan(resolution_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No plan found")
     return plan
 
+@router.post("/{resolution_id}/revert-plan")
+async def revert_to_original_plan(resolution_id: int, db: Session = Depends(get_db)):
+    """
+    Revert the plan to the original resolution values.
+    Creates a new plan version with the resolution's original settings.
+    """
+    resolution = db.query(Resolution).filter(Resolution.id == resolution_id).first()
+    if not resolution:
+        raise HTTPException(status_code=404, detail="Resolution not found")
+    
+    current_plan = db.query(Plan).filter(
+        Plan.resolution_id == resolution_id
+    ).order_by(Plan.version.desc()).first()
+    
+    if not current_plan:
+        raise HTTPException(status_code=404, detail="No plan found")
+    
+    # Create new plan version with original resolution values
+    new_plan = Plan(
+        resolution_id=resolution_id,
+        version=current_plan.version + 1,
+        frequency_per_week=resolution.frequency_per_week,
+        min_minutes=resolution.min_minutes,
+        time_window=resolution.time_window,
+        recovery_step=None
+    )
+    db.add(new_plan)
+    db.commit()
+    db.refresh(new_plan)
+    
+    return {"message": "Plan reverted to original", "version": new_plan.version}
+
 @router.post("/{resolution_id}/insights/actions", response_model=InsightActionResponse)
 async def create_insight_action(
     resolution_id: int, 
@@ -106,7 +138,7 @@ async def create_insight_action(
                 frequency_per_week=data.suggested_changes.get('frequency_per_week', current_plan.frequency_per_week),
                 min_minutes=data.suggested_changes.get('min_minutes', current_plan.min_minutes),
                 time_window=data.suggested_changes.get('time_window', current_plan.time_window),
-                recovery_step=f"User accepted suggestion: {data.insight_summary}"
+                recovery_step=f"Accepted: {data.insight_summary}"
             )
             db.add(new_plan)
             db.commit()
