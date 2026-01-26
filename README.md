@@ -1,6 +1,13 @@
 # DriftMirror
 
-A minimal goal-tracking app with LLM-powered reflection and autonomous plan adaptation.
+DriftMirror is a lightweight goal-tracking app that helps you turn intentions into a repeatable habit loop: set a goal, define a “minimum action,” check in regularly (including how hard it felt), and get a clear, data-backed reflection when patterns start to drift.
+
+It pairs a simple check-in workflow with “mirror reports” that summarize what’s happening in your own words (blockers, friction, consistency) and surfaces actionable suggestions you can accept, customize, or dismiss. Plan adjustments (frequency/minutes/time window) and minimum-action edits persist to the database so your goal stays aligned with real life.
+
+Built as a small, hackable full‑stack project:
+- **Backend:** FastAPI + SQLAlchemy + SQLite
+- **Frontend:** Next.js (App Router) + TypeScript + Tailwind
+- **LLM:** Google Gemini for reflection/summary generation (kept off the critical path for saving check-ins)
 
 **Philosophy:** "Start before you think about the value. Value comes after you start. Don't wait."
 
@@ -87,7 +94,3 @@ drift_mirror/
 - 🔍 Pattern detection and drift analysis
 - 💡 Personalized insights that quote your own words
 - 📊 Progress summaries with habit formation tracking
-
-## Demo
-
-Click "Load Demo Data" on the dashboard to seed sample data and trigger a mirror report instantly.
