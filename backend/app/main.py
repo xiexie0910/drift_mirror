@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -6,12 +7,31 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
 
 from app.db import init_db
-from app.routes import resolutions, checkins, dashboard, reality_check
+from app.routes import resolutions, checkins, dashboard, reality_check, demo
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Environment configuration
 IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+
+def validate_environment():
+    """Validate required environment variables on startup."""
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        logger.warning(
+            "GEMINI_API_KEY not set. LLM features (mirror reports, goal assessment) will not work. "
+            "Get an API key from https://aistudio.google.com/app/apikey"
+        )
+    else:
+        logger.info("GEMINI_API_KEY configured successfully")
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -32,8 +52,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Validate environment on startup
+    validate_environment()
+    # Initialize database
     init_db()
+    logger.info("DriftMirror API started successfully")
     yield
+    logger.info("DriftMirror API shutting down")
 
 app = FastAPI(
     title="DriftMirror API",
@@ -68,6 +93,7 @@ app.include_router(resolutions.router, prefix="/api/resolutions", tags=["resolut
 app.include_router(checkins.router, prefix="/api/checkins", tags=["checkins"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(reality_check.router, prefix="/api/reality-check", tags=["reality-check"])
+app.include_router(demo.router, prefix="/api/demo", tags=["demo"])
 
 @app.get("/api/health")
 async def health():

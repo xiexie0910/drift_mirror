@@ -4,17 +4,15 @@
  * DriftMirror Goal Detail Page
  * ============================================================
  * 
- * Shows specific goal details with:
- * - Clear goal statement and purpose
- * - Current metrics
- * - Recent check-ins
- * - Plan details
- * - Progress summary button
- * - Actions (check-in, view analysis, delete)
+ * Award-winning design with:
+ * - Smooth staggered animations
+ * - Interactive card hover effects
+ * - Spring physics for transitions
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { MetricPills } from '@/components/MetricPills';
 import { Timeline } from '@/components/Timeline';
@@ -131,18 +129,11 @@ const handleSaveMinAction = async () => {
     
     setSavingMinAction(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/resolutions/${goalId}/minimum-action`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minimum_action_text: minActionText.trim() })
-      });
-      
-      if (!response.ok) throw new Error('Failed to update minimum action');
+      await api.updateMinimumAction(goalId, minActionText.trim());
       
       setIsEditingMinAction(false);
       await loadGoalDetails();
-    } catch (err) {
-      console.error('Failed to update minimum action:', err);
+    } catch {
       alert('Failed to update minimum action. Please try again.');
     } finally {
       setSavingMinAction(false);
@@ -168,27 +159,53 @@ const handleSaveMinAction = async () => {
 
   const { resolution, current_plan, metrics, recent_checkins, latest_mirror, drift_triggered } = dashboard;
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { type: 'spring', stiffness: 300, damping: 24 }
+    }
+  };
+
   return (
     <div className="min-h-screen pb-40 overflow-y-auto">
-      <div className="max-w-lg mx-auto px-4 py-8 space-y-8">
+      <motion.div 
+        className="max-w-lg mx-auto px-4 py-8 space-y-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         
         {/* Back Navigation */}
-        <nav className="animate-fade-in-up">
-          <button
+        <motion.nav variants={itemVariants}>
+          <motion.button
+            whileHover={{ x: -3 }}
             onClick={() => router.push('/dashboard')}
             className="flex items-center gap-2 text-neutral-500 hover:text-teal-600 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">All Goals</span>
-          </button>
-        </nav>
+          </motion.button>
+        </motion.nav>
 
         {/* Goal Header - Clear statement */}
-        <header className="glass-strong rounded-2xl p-6 animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
+        <motion.header variants={itemVariants} className="glass-strong rounded-2xl p-6">
           <div className="flex items-start gap-4">
-            <div className="glass-subtle p-3 rounded-xl glow-teal shrink-0">
+            <motion.div 
+              whileHover={{ rotate: 5, scale: 1.05 }}
+              className="glass-subtle p-3 rounded-xl glow-teal shrink-0"
+            >
               <Target className="w-6 h-6 text-teal-600" />
-            </div>
+            </motion.div>
             <div className="flex-1">
               <p className="text-xs text-teal-600 uppercase tracking-wider font-medium mb-1">Goal</p>
               <h1 className="text-2xl font-semibold text-neutral-800">
@@ -275,111 +292,166 @@ const handleSaveMinAction = async () => {
               </div>
             </div>
           )}
-        </header>
+        </motion.header>
 
         {/* Metrics */}
-        <section className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <motion.section variants={itemVariants}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xs font-medium text-teal-600 uppercase tracking-wider">
               Progress
             </h2>
           </div>
           <MetricPills metrics={metrics} />
-        </section>
+        </motion.section>
 
         {/* Progress Summary Modal */}
-        {showSummary && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
-            <div className="glass-strong rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto animate-fade-in-up">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-teal-500/10 rounded-lg">
-                    <TrendingUp className="w-5 h-5 text-teal-600" />
+        <AnimatePresence>
+          {showSummary && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm"
+            >
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                className="glass-strong rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      initial={{ rotate: -10 }}
+                      animate={{ rotate: 0 }}
+                      className="p-2 bg-teal-500/10 rounded-lg"
+                    >
+                      <TrendingUp className="w-5 h-5 text-teal-600" />
+                    </motion.div>
+                    <h3 className="text-lg font-semibold text-neutral-800">Your Progress</h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-neutral-800">Your Progress</h3>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowSummary(false)}
+                    className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-neutral-500" />
+                  </motion.button>
                 </div>
-                <button
-                  onClick={() => setShowSummary(false)}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-neutral-500" />
-                </button>
-              </div>
 
-              {summaryLoading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 text-teal-500 animate-spin" />
-                  <p className="text-sm text-neutral-500 mt-3">Analyzing your progress...</p>
-                </div>
-              ) : summary ? (
-                <div className="space-y-6">
-                  {/* Overall Progress */}
-                  <div>
-                    <p className="text-neutral-700 leading-relaxed">{summary.overall_progress}</p>
+                {summaryLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 text-teal-500 animate-spin" />
+                    <p className="text-sm text-neutral-500 mt-3">Analyzing your progress...</p>
                   </div>
+                ) : summary ? (
+                  <div className="space-y-6">
+                    {/* Overall Progress */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <p className="text-neutral-700 leading-relaxed">{summary.overall_progress}</p>
+                    </motion.div>
 
-                  {/* Key Wins */}
-                  {summary.key_wins.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-medium text-teal-600 uppercase tracking-wider mb-3">
-                        Key Wins
-                      </h4>
-                      <ul className="space-y-2">
-                        {summary.key_wins.map((win, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-neutral-700">
-                            <span className="text-teal-500 mt-0.5">✓</span>
-                            {win}
-                          </li>
-                        ))}
+                    {/* Key Wins */}
+                    {summary.key_wins.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                      >
+                        <h4 className="text-xs font-medium text-teal-600 uppercase tracking-wider mb-3">
+                          Key Wins
+                        </h4>
+                        <ul className="space-y-2">
+                          {summary.key_wins.map((win, i) => (
+                            <motion.li 
+                              key={i} 
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.15 + i * 0.05 }}
+                              className="flex items-start gap-2 text-sm text-neutral-700"
+                            >
+                              <span className="text-teal-500 mt-0.5">✓</span>
+                              {win}
+                            </motion.li>
+                          ))}
                       </ul>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* Growth Observed */}
                   {summary.growth_observed && (
-                    <div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
                       <h4 className="text-xs font-medium text-teal-600 uppercase tracking-wider mb-2">
                         Growth Observed
                       </h4>
                       <p className="text-sm text-neutral-600">{summary.growth_observed}</p>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* Days to Habit */}
-                  <div className="glass-subtle rounded-xl p-4">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    className="glass-subtle rounded-xl p-4"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-neutral-600">Days to habit formation</span>
                       <span className="text-lg font-semibold text-teal-600">{summary.days_to_habit}</span>
                     </div>
-                    <div className="w-full bg-neutral-200 rounded-full h-2 mt-2">
-                      <div 
-                        className="bg-teal-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, ((90 - summary.days_to_habit) / 90) * 100)}%` }}
+                    <div className="w-full bg-neutral-200 rounded-full h-2 mt-2 overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, ((90 - summary.days_to_habit) / 90) * 100)}%` }}
+                        transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
+                        className="bg-gradient-to-r from-teal-400 to-teal-600 h-2 rounded-full"
                       />
                     </div>
                     <p className="text-xs text-neutral-500 mt-2">Based on 90-day habit research</p>
-                  </div>
+                  </motion.div>
 
                   {/* Encouragement */}
                   {summary.encouragement && (
-                    <div className="pt-4 border-t border-white/30">
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.35 }}
+                      className="pt-4 border-t border-white/30"
+                    >
                       <p className="text-neutral-700 italic">&ldquo;{summary.encouragement}&rdquo;</p>
-                    </div>
+                    </motion.div>
                   )}
                 </div>
               ) : null}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Drift Alert */}
         {drift_triggered && latest_mirror && (
-          <div className="glass-strong rounded-2xl p-5 animate-fade-in-up glow-teal" style={{ animationDelay: '0.15s' }}>
+          <motion.div 
+            variants={itemVariants}
+            className="glass-strong rounded-2xl p-5 glow-teal"
+          >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-teal-500/10 rounded-lg">
+                <motion.div 
+                  animate={{ rotate: [0, 5, -5, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="p-2 bg-teal-500/10 rounded-lg"
+                >
                   <Sparkles className="w-5 h-5 text-teal-600" />
-                </div>
+                </motion.div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-neutral-700">Pattern detected</p>
                   {/* Show first finding preview */}
@@ -392,14 +464,16 @@ const handleSaveMinAction = async () => {
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => router.push(`/mirror?goal=${goalId}`)}
-                variant="glass"
-                size="sm"
-                className="shrink-0 gap-1"
-              >
-                Details <ArrowRight className="w-3 h-3" />
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  onClick={() => router.push(`/mirror?goal=${goalId}`)}
+                  variant="glass"
+                  size="sm"
+                  className="shrink-0 gap-1"
+                >
+                  Details <ArrowRight className="w-3 h-3" />
+                </Button>
+              </motion.div>
             </div>
             {/* Show strength pattern if available */}
             {latest_mirror.strength_pattern && (
@@ -412,12 +486,12 @@ const handleSaveMinAction = async () => {
             <p className="text-xs text-neutral-500 mt-3 pt-3 border-t border-white/20">
               Drift doesn&apos;t mean failure. It just means the plan and real life are out of sync.
             </p>
-          </div>
+          </motion.div>
         )}
 
         {/* Actionable Suggestions from Latest Mirror */}
         {latest_mirror?.actionable_suggestions && latest_mirror.actionable_suggestions.length > 0 && (
-          <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.175s' }}>
+          <motion.div variants={itemVariants} className="space-y-4">
             {latest_mirror.actionable_suggestions.slice(0, 2).map((suggestion, idx) => (
               <InsightCard
                 key={idx}
@@ -428,16 +502,18 @@ const handleSaveMinAction = async () => {
               />
             ))}
             {latest_mirror.actionable_suggestions.length > 2 && (
-              <Button
-                onClick={() => router.push(`/mirror?goal=${goalId}`)}
-                variant="glass"
-                className="w-full gap-2"
-              >
-                View all {latest_mirror.actionable_suggestions.length} suggestions
-                <ArrowRight className="w-4 h-4" />
-              </Button>
+              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+                <Button
+                  onClick={() => router.push(`/mirror?goal=${goalId}`)}
+                  variant="glass"
+                  className="w-full gap-2"
+                >
+                  View all {latest_mirror.actionable_suggestions.length} suggestions
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Plan Adjusted Notice - only show when plan differs from original */}
@@ -445,12 +521,16 @@ const handleSaveMinAction = async () => {
           resolution.frequency_per_week !== current_plan.frequency_per_week ||
           resolution.min_minutes !== current_plan.min_minutes
         ) && (
-          <section className="glass-subtle rounded-2xl p-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <motion.section variants={itemVariants} className="glass-subtle rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-1.5 bg-amber-500/10 rounded-lg">
+                <motion.div 
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="p-1.5 bg-amber-500/10 rounded-lg"
+                >
                   <Sparkles className="w-4 h-4 text-amber-600" />
-                </div>
+                </motion.div>
                 <div>
                   <p className="text-sm font-medium text-neutral-700">Plan adjusted from original</p>
                   <p className="text-xs text-neutral-500 mt-0.5">
@@ -463,116 +543,140 @@ const handleSaveMinAction = async () => {
                   </p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const response = await fetch(`/api/resolutions/${goalId}/revert-plan`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' }
-                    });
-                    if (!response.ok) {
-                      throw new Error('Failed to revert plan');
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await api.revertPlan(goalId);
+                      await loadGoalDetails();
+                    } catch {
+                      alert('Failed to revert plan. Please try again.');
                     }
-                    await loadGoalDetails();
-                  } catch (err) {
-                    console.error('Failed to revert:', err);
-                    alert('Failed to revert plan. Please try again.');
-                  }
-                }}
+                  }}
                 className="text-neutral-500 hover:text-neutral-700 shrink-0"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Revert
               </Button>
+              </motion.div>
             </div>
-          </section>
+          </motion.section>
         )}
 
         {/* Recent Check-ins */}
-        <section className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+        <motion.section variants={itemVariants}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xs font-medium text-teal-600 uppercase tracking-wider">
               Recent Check-ins
             </h2>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleCheckProgress}
               className="flex items-center gap-1.5 text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors"
             >
               <TrendingUp className="w-3.5 h-3.5" />
               Check Progress
-            </button>
+            </motion.button>
           </div>
           {recent_checkins.length > 0 ? (
             <Timeline checkins={recent_checkins} onCheckinClick={setSelectedCheckin} />
           ) : (
-            <div className="glass-subtle rounded-2xl p-8 text-center">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="glass-subtle rounded-2xl p-8 text-center"
+            >
               <p className="text-neutral-500">No check-ins recorded yet.</p>
               <p className="text-sm text-neutral-400 mt-1">Start tracking your progress below.</p>
-            </div>
+            </motion.div>
           )}
-        </section>
+        </motion.section>
 
         {/* Danger Zone */}
-        <section className="animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
+        <motion.section variants={itemVariants}>
           <div className="glass-subtle rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-700">Delete Goal</p>
                 <p className="text-xs text-neutral-500 mt-0.5">This cannot be undone</p>
               </div>
-              <Button
-                onClick={handleDelete}
-                variant="ghost"
-                size="sm"
-                disabled={deleting}
-                className="text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {deleting ? 'Deleting...' : 'Delete'}
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  onClick={handleDelete}
+                  variant="ghost"
+                  size="sm"
+                  disabled={deleting}
+                  className="text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </motion.div>
             </div>
           </div>
-        </section>
-      </div>
+        </motion.section>
+      </motion.div>
 
       {/* Fixed bottom action */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-white/20">
+      <motion.div 
+        initial={{ y: 100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.3 }}
+        className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-white/20"
+      >
         <div className="max-w-lg mx-auto">
-          <Button 
-            onClick={() => router.push(`/checkin?goal=${goalId}`)} 
-            size="lg" 
-            className="w-full gap-2"
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => router.push(`/checkin?goal=${goalId}`)}
+            className="w-full py-4 px-6 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold text-lg rounded-2xl shadow-xl shadow-teal-500/30 flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
             Record Check-in
-          </Button>
+          </motion.button>
           
           {latest_mirror && !drift_triggered && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
               onClick={() => router.push(`/mirror?goal=${goalId}`)}
               className="w-full mt-3 py-2 text-sm text-neutral-500 hover:text-teal-600 transition-colors"
             >
               View latest analysis
-            </button>
+            </motion.button>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Checkin Detail Modal - Fixed Center */}
-      {selectedCheckin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
-          <div className="glass-strong rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in-up">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-neutral-800">Check-in Details</h3>
-              <button
-                onClick={() => setSelectedCheckin(null)}
-                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-neutral-500" />
-              </button>
-            </div>
+      <AnimatePresence>
+        {selectedCheckin && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="glass-strong rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-neutral-800">Check-in Details</h3>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setSelectedCheckin(null)}
+                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-neutral-500" />
+                </motion.button>
+              </div>
 
             <div className="space-y-4">
               {/* Date */}
@@ -686,15 +790,18 @@ const handleSaveMinAction = async () => {
               )}
             </div>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setSelectedCheckin(null)}
-              className="w-full mt-6 px-4 py-2 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-600 transition-colors"
+              className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-teal-500/30"
             >
               Close
-            </button>
-          </div>
-        </div>
+            </motion.button>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

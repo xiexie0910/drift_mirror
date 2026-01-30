@@ -9,7 +9,6 @@ class ResolutionCreate(BaseModel):
     mode: str = Field(default="personal_growth", max_length=50)
     frequency_per_week: int = Field(default=3, ge=1, le=7)
     min_minutes: int = Field(default=15, ge=1, le=120)
-    time_window: str = Field(default="morning", max_length=50)
     minimum_action_text: Optional[str] = Field(default=None, max_length=300)
 
 class ResolutionResponse(BaseModel):
@@ -19,7 +18,6 @@ class ResolutionResponse(BaseModel):
     mode: str
     frequency_per_week: int
     min_minutes: int
-    time_window: str
     minimum_action_text: Optional[str]
     created_at: datetime
     
@@ -32,7 +30,6 @@ class PlanResponse(BaseModel):
     version: int
     frequency_per_week: int
     min_minutes: int
-    time_window: str
     recovery_step: Optional[str]
     created_at: datetime
     
@@ -153,80 +150,6 @@ class InsightActionResponse(BaseModel):
     
     class Config:
         from_attributes = True
-
-
-# ============================================================
-# Diary Feature Schemas
-# ============================================================
-
-class DiaryEntryCreate(BaseModel):
-    """Create a new diary entry for a resolution."""
-    resolution_id: int = Field(..., gt=0)
-    entry_date: datetime
-    content: str = Field(..., min_length=1, max_length=5000)
-    mood: Optional[str] = Field(default=None, pattern="^(great|good|okay|tough)$")
-    wins: Optional[str] = Field(default=None, max_length=1000)
-    challenges: Optional[str] = Field(default=None, max_length=1000)
-
-class DiaryEntryUpdate(BaseModel):
-    """Update an existing diary entry."""
-    content: Optional[str] = Field(default=None, min_length=1, max_length=5000)
-    mood: Optional[str] = Field(default=None, pattern="^(great|good|okay|tough)$")
-    wins: Optional[str] = Field(default=None, max_length=1000)
-    challenges: Optional[str] = Field(default=None, max_length=1000)
-
-class DiaryEntryResponse(BaseModel):
-    """Response for a diary entry."""
-    id: int
-    resolution_id: int
-    entry_date: datetime
-    content: str
-    mood: Optional[str]
-    wins: Optional[str]
-    challenges: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class QuarterlyReviewResponse(BaseModel):
-    """
-    Response for a 90-day quarterly review.
-    
-    Research shows that 90 days is the threshold for habit formation.
-    Reviewing progress after 90 days helps reinforce positive behaviors
-    and provides a moment to celebrate growth.
-    """
-    id: int
-    resolution_id: int
-    quarter_number: int
-    start_date: datetime
-    end_date: datetime
-    total_checkins: int
-    completion_rate: float
-    average_friction: float
-    diary_entries_count: int
-    key_wins: Optional[List[str]]
-    patterns_observed: Optional[List[str]]
-    growth_areas: Optional[str]
-    user_reflection: Optional[str]
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class QuarterlyReviewUpdate(BaseModel):
-    """Update a quarterly review with user reflection."""
-    user_reflection: Optional[str] = Field(default=None, max_length=5000)
-
-class DiaryListResponse(BaseModel):
-    """Response for listing diary entries with pagination."""
-    entries: List[DiaryEntryResponse]
-    total_count: int
-    days_until_review: int  # Days until next 90-day review
-    current_streak: int  # Consecutive days with entries
-    review_note: str = "Your 90-day review is coming up! Research shows that 90 days is the threshold for habit formation. Keep going!"
 
 
 # ============================================================

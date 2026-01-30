@@ -4,14 +4,16 @@
  * DriftMirror Unified Dashboard
  * ============================================================
  * 
- * Shows all goals in a unified view.
- * Users can click into any goal to see details.
+ * Award-winning design with:
+ * - Staggered card animations
+ * - Interactive hover effects
+ * - Smooth transitions
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
-import { Plus, Target, Trash2, Calendar, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Target, Trash2, Calendar, ChevronRight, Sparkles } from 'lucide-react';
 import { api, Resolution, ApiError } from '@/lib/api';
 
 export default function DashboardPage() {
@@ -79,10 +81,18 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen pb-32 overflow-y-auto">
-      <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+      <motion.div 
+        className="max-w-lg mx-auto px-4 py-8 space-y-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
         
         {/* Header */}
-        <header className="animate-fade-in-up">
+        <motion.header
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+        >
           <h1 className="text-2xl font-semibold text-neutral-800">Your Goals</h1>
           <p className="text-neutral-500 mt-1">
             {goals.length === 0 
@@ -90,23 +100,37 @@ export default function DashboardPage() {
               : `${goals.length} goal${goals.length === 1 ? '' : 's'} tracked`
             }
           </p>
-        </header>
+        </motion.header>
 
         {/* Goals Grid */}
         {goals.length > 0 ? (
           <div className="space-y-4">
-            {goals.map((goal, index) => (
-              <div
-                key={goal.id}
-                onClick={() => router.push(`/dashboard/${goal.id}`)}
-                className="glass-strong rounded-2xl p-5 cursor-pointer transition-all hover:scale-[1.02] hover:glow-teal animate-fade-in-up group"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
+            <AnimatePresence>
+              {goals.map((goal, index) => (
+                <motion.div
+                  key={goal.id}
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -100, scale: 0.9 }}
+                  transition={{ 
+                    type: 'spring', 
+                    stiffness: 300, 
+                    damping: 25,
+                    delay: index * 0.08 
+                  }}
+                  whileHover={{ scale: 1.02, y: -3 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => router.push(`/dashboard/${goal.id}`)}
+                  className="glass-strong rounded-2xl p-5 cursor-pointer group"
+                >
                 <div className="flex items-start gap-4">
                   {/* Icon */}
-                  <div className="glass-subtle p-3 rounded-xl shrink-0 group-hover:glow-teal transition-all">
+                  <motion.div 
+                    whileHover={{ rotate: 5 }}
+                    className="glass-subtle p-3 rounded-xl shrink-0 group-hover:shadow-lg group-hover:shadow-teal-500/20 transition-all"
+                  >
                     <Target className="w-5 h-5 text-teal-600" />
-                  </div>
+                  </motion.div>
                   
                   {/* Content */}
                   <div className="flex-1 min-w-0">
@@ -134,54 +158,93 @@ export default function DashboardPage() {
                   
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={(e) => handleDelete(e, goal.id)}
                       disabled={deletingId === goal.id}
                       className="p-2 rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
                       aria-label="Delete goal"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
-                    <ChevronRight className="w-5 h-5 text-neutral-300 group-hover:text-teal-500 transition-colors" />
+                    </motion.button>
+                    <ChevronRight className="w-5 h-5 text-neutral-300 group-hover:text-teal-500 group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
+            </AnimatePresence>
           </div>
         ) : (
           /* Empty State */
-          <div className="glass-strong rounded-2xl p-10 text-center animate-fade-in-up">
-            <div className="flex justify-center mb-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className="glass-strong rounded-2xl p-10 text-center"
+          >
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="flex justify-center mb-6"
+            >
               <div className="glass-subtle p-4 rounded-2xl">
-                <Target className="w-8 h-8 text-neutral-400" />
+                <Sparkles className="w-8 h-8 text-teal-500" />
               </div>
-            </div>
-            <p className="text-neutral-700 mb-2">No goals yet</p>
-            <p className="text-sm text-neutral-500 mb-6">
-              Create your first goal to start tracking your progress.
-            </p>
-            <Button onClick={() => router.push('/onboarding')} className="gap-2">
+            </motion.div>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-neutral-700 font-medium text-lg mb-2"
+            >
+              Ready to build a new habit?
+            </motion.p>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-sm text-neutral-500 mb-6"
+            >
+              Create your first goal to start your 90-day journey.
+            </motion.p>
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push('/onboarding')} 
+              className="px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-xl shadow-lg shadow-teal-500/30 flex items-center gap-2 mx-auto"
+            >
               <Plus className="w-4 h-4" />
               Create First Goal
-            </Button>
-          </div>
+            </motion.button>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
       {/* Fixed bottom action - only show if goals exist */}
       {goals.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-white/20">
+        <motion.div 
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.3 }}
+          className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-white/20"
+        >
           <div className="max-w-lg mx-auto">
-            <Button 
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => router.push('/onboarding')} 
-              size="lg" 
-              className="w-full gap-2"
+              className="w-full py-4 px-6 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold text-lg rounded-2xl shadow-xl shadow-teal-500/30 flex items-center justify-center gap-2"
             >
               <Plus className="w-5 h-5" />
               Create New Goal
-            </Button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

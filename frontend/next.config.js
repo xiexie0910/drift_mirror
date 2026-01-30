@@ -8,6 +8,9 @@
  * - API proxy (no direct backend exposure)
  */
 
+// Backend URL from environment or default to localhost
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Remove X-Powered-By header
@@ -53,7 +56,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind + Google Fonts
               "img-src 'self' data: blob:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000", // API in development
+              `connect-src 'self' ${BACKEND_URL}`, // API connection
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -73,11 +76,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*/',
-        destination: 'http://127.0.0.1:8000/api/:path*/',
+        destination: `${BACKEND_URL}/api/:path*/`,
       },
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*',
+        destination: `${BACKEND_URL}/api/:path*`,
       },
     ];
   },

@@ -2,12 +2,15 @@
 /**
  * Onboarding Page - Two-Phase Intent Capture
  * ============================================================
- * Phase 1: Capture goal, why, boundaries, and frequency
- * Phase 2: Agent B generates minimum actions + accountability suggestions
+ * Award-winning design with:
+ * - Step-by-step animations
+ * - Interactive chip selection
+ * - Smooth phase transitions
  */
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight, Loader2, AlertCircle, Check, Zap, Users } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -354,7 +357,6 @@ export default function OnboardingPage() {
         mode: 'personal_growth',
         frequency_per_week: form.frequencyPerWeek,
         min_minutes: form.selectedMinimumAction.minutes,
-        time_window: 'morning',
         minimum_action_text: form.selectedMinimumAction.text,
       });
       router.push('/dashboard');
@@ -470,9 +472,18 @@ export default function OnboardingPage() {
 
         {/* Input Phase */}
         {phase === 'input' && (
-          <div className="space-y-6 animate-fade-in-up">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
             {/* Question 1: Goal */}
-            <div className="glass-strong rounded-2xl p-6 space-y-3">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, type: 'spring', stiffness: 300, damping: 24 }}
+              className="glass-strong rounded-2xl p-6 space-y-3"
+            >
               <label className="block">
                 <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
                   1. Your Goal
@@ -487,10 +498,15 @@ export default function OnboardingPage() {
                   maxLength={INPUT_LIMITS.GOAL_MAX_LENGTH}
                 />
               </label>
-            </div>
+            </motion.div>
 
             {/* Question 2: Why */}
-            <div className="glass-strong rounded-2xl p-6 space-y-3">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 24 }}
+              className="glass-strong rounded-2xl p-6 space-y-3"
+            >
               <label className="block">
                 <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
                   2. Your Why
@@ -505,10 +521,15 @@ export default function OnboardingPage() {
                   maxLength={INPUT_LIMITS.WHY_MAX_LENGTH}
                 />
               </label>
-            </div>
+            </motion.div>
 
             {/* Question 3: Boundaries */}
-            <div className="glass-strong rounded-2xl p-6 space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, type: 'spring', stiffness: 300, damping: 24 }}
+              className="glass-strong rounded-2xl p-6 space-y-4"
+            >
               <div>
                 <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
                   3. Your Boundaries
@@ -518,20 +539,25 @@ export default function OnboardingPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {BOUNDARY_OPTIONS.map(chip => (
-                  <button
+                {BOUNDARY_OPTIONS.map((chip, index) => (
+                  <motion.button
                     key={chip}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.35 + index * 0.02 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => toggleBoundary(chip)}
                     className={`
-                      px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
+                      px-4 py-2.5 rounded-xl text-sm font-medium transition-colors
                       ${form.boundaryChips.includes(chip)
                         ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
-                        : 'glass-subtle text-neutral-600 hover:bg-white/60 hover:-translate-y-0.5'
+                        : 'glass-subtle text-neutral-600 hover:bg-white/60'
                       }
                     `}
                   >
                     {chip}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
               <Input
@@ -540,10 +566,15 @@ export default function OnboardingPage() {
                 placeholder="Or add your own boundary..."
                 maxLength={INPUT_LIMITS.CUSTOM_BOUNDARY_MAX_LENGTH}
               />
-            </div>
+            </motion.div>
 
             {/* Question 4: Frequency */}
-            <div className="glass-strong rounded-2xl p-6 space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, type: 'spring', stiffness: 300, damping: 24 }}
+              className="glass-strong rounded-2xl p-6 space-y-4"
+            >
               <div>
                 <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
                   4. Frequency
@@ -553,74 +584,142 @@ export default function OnboardingPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4, 5, 6, 7].map(freq => (
-                  <button
+                {[1, 2, 3, 4, 5, 6, 7].map((freq, index) => (
+                  <motion.button
                     key={freq}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.45 + index * 0.03 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setForm(f => ({ ...f, frequencyPerWeek: freq }))}
                     className={`
-                      px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
+                      px-4 py-2.5 rounded-xl text-sm font-medium transition-colors
                       ${form.frequencyPerWeek === freq
                         ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
-                        : 'glass-subtle text-neutral-600 hover:bg-white/60 hover:-translate-y-0.5'
+                        : 'glass-subtle text-neutral-600 hover:bg-white/60'
                       }
                     `}
                   >
                     {freq}x / week
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Error Display */}
-            {error && (
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm animate-fade-in-up">
-                {error}
-              </div>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm"
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Submit Button */}
-            <Button
-              onClick={handleSubmit}
-              size="lg"
-              className="w-full gap-2"
-              disabled={!isFormValid()}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
             >
-              Check my goal <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSubmit}
+                disabled={!isFormValid()}
+                className={`
+                  w-full py-4 px-6 rounded-2xl font-semibold text-lg
+                  flex items-center justify-center gap-2
+                  transition-all duration-200
+                  ${!isFormValid()
+                    ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-xl shadow-teal-500/30 hover:shadow-2xl hover:shadow-teal-500/40'
+                  }
+                `}
+              >
+                Check my goal <ArrowRight className="w-5 h-5" />
+              </motion.button>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* Generating Options Phase */}
         {phase === 'generating-options' && (
-          <div className="glass-strong rounded-2xl p-8 flex items-center justify-center animate-fade-in-up">
-            <div className="text-center space-y-3">
-              <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
-              <p className="text-neutral-600">Generating personalized options...</p>
-              <p className="text-sm text-neutral-400">Creating your minimum actions and accountability suggestions</p>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-strong rounded-2xl p-8 flex items-center justify-center"
+          >
+            <div className="text-center space-y-4">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              >
+                <Loader2 className="w-10 h-10 text-teal-600 mx-auto" />
+              </motion.div>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-neutral-700 font-medium"
+              >
+                Generating personalized options...
+              </motion.p>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-sm text-neutral-400"
+              >
+                Creating your minimum actions and accountability suggestions
+              </motion.p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Select Options Phase (Agent B results) */}
         {phase === 'select-options' && agentBResponse && (
-          <div className="space-y-6 animate-fade-in-up">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
             {/* Header */}
-            <div className="text-center">
-              <div className="flex justify-center mb-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center"
+            >
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1, type: 'spring' }}
+                className="flex justify-center mb-4"
+              >
                 <div className="glass-subtle p-3 rounded-xl glow-teal">
                   <Zap className="w-6 h-6 text-teal-600" />
                 </div>
-              </div>
+              </motion.div>
               <h1 className="text-2xl font-semibold text-neutral-800">
                 Personalize your approach
               </h1>
               <p className="text-neutral-500 mt-2">
                 Choose what works best for you.
               </p>
-            </div>
+            </motion.div>
 
             {/* Minimum Action Selection */}
-            <div className="glass-strong rounded-2xl p-6 space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="glass-strong rounded-2xl p-6 space-y-4"
+            >
               <div>
                 <span className="text-xs text-teal-600 uppercase tracking-wider font-medium">
                   5. Your Minimum Action
@@ -634,11 +733,16 @@ export default function OnboardingPage() {
               </div>
               <div className="space-y-3">
                 {agentBResponse.minimum_actions.map((action, i) => (
-                  <button
+                  <motion.button
                     key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.15 + i * 0.05 }}
+                    whileHover={{ scale: 1.01, x: 4 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => setForm(f => ({ ...f, selectedMinimumAction: action }))}
                     className={`
-                      w-full text-left p-4 rounded-xl transition-all duration-300
+                      w-full text-left p-4 rounded-xl transition-colors
                       ${form.selectedMinimumAction?.text === action.text
                         ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
                         : 'glass-subtle hover:bg-white/60'
@@ -658,13 +762,18 @@ export default function OnboardingPage() {
                         {action.minutes} min
                       </span>
                     </div>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Accountability Selection */}
-            <div className="glass-strong rounded-2xl p-6 space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="glass-strong rounded-2xl p-6 space-y-4"
+            >
               <div>
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-teal-600" />
@@ -681,11 +790,16 @@ export default function OnboardingPage() {
               </div>
               <div className="space-y-3">
                 {agentBResponse.accountability_suggestions.map((suggestion, i) => (
-                  <button
+                  <motion.button
                     key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 + i * 0.05 }}
+                    whileHover={{ scale: 1.01, x: 4 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => setForm(f => ({ ...f, selectedAccountability: suggestion, customAccountability: '' }))}
                     className={`
-                      w-full text-left p-4 rounded-xl transition-all duration-300
+                      w-full text-left p-4 rounded-xl transition-colors
                       ${form.selectedAccountability?.text === suggestion.text
                         ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
                         : 'glass-subtle hover:bg-white/60'
@@ -705,7 +819,7 @@ export default function OnboardingPage() {
                         {suggestion.type}
                       </span>
                     </div>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
               
@@ -719,25 +833,47 @@ export default function OnboardingPage() {
                   maxLength={200}
                 />
               </div>
-            </div>
+            </motion.div>
 
             {/* Error Display */}
-            {error && (
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm animate-fade-in-up">
-                {error}
-              </div>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm"
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Create Button */}
-            <Button
-              onClick={createResolution}
-              size="lg"
-              className="w-full gap-2"
-              disabled={!form.selectedMinimumAction}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
             >
-              Create my goal <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={createResolution}
+                disabled={!form.selectedMinimumAction}
+                className={`
+                  w-full py-4 px-6 rounded-2xl font-semibold text-lg
+                  flex items-center justify-center gap-2
+                  transition-all duration-200
+                  ${!form.selectedMinimumAction
+                    ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-xl shadow-teal-500/30 hover:shadow-2xl hover:shadow-teal-500/40'
+                  }
+                `}
+              >
+                Create my goal <ArrowRight className="w-5 h-5" />
+              </motion.button>
+            </motion.div>
+          </motion.div>
         )}
       </div>
     </div>

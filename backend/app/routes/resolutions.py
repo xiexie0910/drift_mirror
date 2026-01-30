@@ -15,7 +15,6 @@ async def create_resolution(data: ResolutionCreate, db: Session = Depends(get_db
         mode=data.mode,
         frequency_per_week=data.frequency_per_week,
         min_minutes=data.min_minutes,
-        time_window=data.time_window,
         minimum_action_text=data.minimum_action_text
     )
     db.add(resolution)
@@ -27,8 +26,7 @@ async def create_resolution(data: ResolutionCreate, db: Session = Depends(get_db
         resolution_id=resolution.id,
         version=1,
         frequency_per_week=data.frequency_per_week,
-        min_minutes=data.min_minutes,
-        time_window=data.time_window
+        min_minutes=data.min_minutes
     )
     db.add(plan)
     db.commit()
@@ -80,7 +78,6 @@ async def revert_to_original_plan(resolution_id: int, db: Session = Depends(get_
         version=current_plan.version + 1,
         frequency_per_week=resolution.frequency_per_week,
         min_minutes=resolution.min_minutes,
-        time_window=resolution.time_window,
         recovery_step=None
     )
     db.add(new_plan)
@@ -137,7 +134,6 @@ async def create_insight_action(
                 version=new_version,
                 frequency_per_week=data.suggested_changes.get('frequency_per_week', current_plan.frequency_per_week),
                 min_minutes=data.suggested_changes.get('min_minutes', current_plan.min_minutes),
-                time_window=data.suggested_changes.get('time_window', current_plan.time_window),
                 recovery_step=f"Accepted: {data.insight_summary}"
             )
             db.add(new_plan)

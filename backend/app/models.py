@@ -12,14 +12,11 @@ class Resolution(Base):
     mode = Column(String(50), default="personal_growth")  # personal_growth or productivity
     frequency_per_week = Column(Integer, default=3)
     min_minutes = Column(Integer, default=15)
-    time_window = Column(String(50), default="morning")  # morning/afternoon/evening/night
     minimum_action_text = Column(Text, nullable=True)  # The user's minimum daily action
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     plans = relationship("Plan", back_populates="resolution", order_by="Plan.version")
     checkins = relationship("Checkin", back_populates="resolution", order_by="Checkin.created_at.desc()")
-    diary_entries = relationship("DiaryEntry", back_populates="resolution", order_by="DiaryEntry.entry_date.desc()")
-    quarterly_reviews = relationship("QuarterlyReview", back_populates="resolution", order_by="QuarterlyReview.quarter_number")
 
 class Plan(Base):
     __tablename__ = "plans"
@@ -29,7 +26,6 @@ class Plan(Base):
     version = Column(Integer, default=1)
     frequency_per_week = Column(Integer, nullable=False)
     min_minutes = Column(Integer, nullable=False)
-    time_window = Column(String(50), nullable=False)
     recovery_step = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
@@ -101,61 +97,3 @@ class InsightAction(Base):
     constraint_details = Column(Text, nullable=True)  # User-specified constraint when action="constrain"
     suggested_changes = Column(JSON, nullable=True)  # What was suggested (e.g., {"time_window": "evening", "frequency_per_week": 2})
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
-
-# ============================================================
-# Diary Feature - Progress Tracking
-# ============================================================
-
-class DiaryEntry(Base):
-    """
-    Daily diary entries for tracking progress and stories.
-    Users can optionally write reflections for each day.
-    These entries contribute to the 90-day quarterly review.
-    """
-    __tablename__ = "diary_entries"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    resolution_id = Column(Integer, ForeignKey("resolutions.id"), nullable=False)
-    entry_date = Column(DateTime, nullable=False)  # The date this entry is for
-    content = Column(Text, nullable=False)  # The diary entry text
-    mood = Column(String(20), nullable=True)  # Optional: great/good/okay/tough
-    wins = Column(Text, nullable=True)  # What went well today
-    challenges = Column(Text, nullable=True)  # What was difficult
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
-    resolution = relationship("Resolution", back_populates="diary_entries")
-
-
-class QuarterlyReview(Base):
-    """
-    90-day review summaries.
-    Research shows that 90 days is the threshold for habit formation.
-    These reviews help users see their progress and reinforce habits.
-    """
-    __tablename__ = "quarterly_reviews"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    resolution_id = Column(Integer, ForeignKey("resolutions.id"), nullable=False)
-    quarter_number = Column(Integer, nullable=False)  # 1, 2, 3, 4...
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
-    
-    # Metrics summary
-    total_checkins = Column(Integer, default=0)
-    completion_rate = Column(Float, default=0.0)
-    average_friction = Column(Float, default=0.0)
-    diary_entries_count = Column(Integer, default=0)
-    
-    # Qualitative summary
-    key_wins = Column(JSON, nullable=True)  # List of major achievements
-    patterns_observed = Column(JSON, nullable=True)  # Behavioral patterns
-    growth_areas = Column(Text, nullable=True)  # AI-generated insights
-    
-    # User reflection (filled by user)
-    user_reflection = Column(Text, nullable=True)
-    
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
-    resolution = relationship("Resolution", back_populates="quarterly_reviews")

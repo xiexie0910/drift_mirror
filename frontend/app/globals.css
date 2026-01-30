@@ -53,42 +53,61 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ambient gradient background - rich teal mesh gradient */
+/* Ambient gradient background - rich teal mesh gradient with mirror quality */
 .ambient-bg {
   background: 
     /* Strong teal glow top-right */
-    radial-gradient(ellipse 90% 70% at 85% -10%, rgba(20, 184, 166, 0.3), transparent 50%),
+    radial-gradient(ellipse 90% 70% at 85% -10%, rgba(20, 184, 166, 0.35), transparent 50%),
     /* Teal glow top-left */
-    radial-gradient(ellipse 60% 50% at 10% 10%, rgba(94, 234, 212, 0.2), transparent 50%),
+    radial-gradient(ellipse 60% 50% at 10% 10%, rgba(94, 234, 212, 0.25), transparent 50%),
     /* Cyan accent center-right */
-    radial-gradient(ellipse 50% 40% at 70% 40%, rgba(34, 211, 238, 0.15), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 70% 40%, rgba(34, 211, 238, 0.18), transparent 50%),
     /* Soft purple accent bottom-left */
     radial-gradient(ellipse 70% 50% at 5% 100%, rgba(168, 85, 247, 0.1), transparent 50%),
     /* Teal wash bottom */
-    radial-gradient(ellipse 100% 60% at 50% 120%, rgba(20, 184, 166, 0.2), transparent 60%),
-    /* Base gradient - teal tinted */
-    linear-gradient(180deg, #ccfbf1 0%, #f0fdfa 25%, #f5f3ff 60%, #ecfeff 100%);
+    radial-gradient(ellipse 100% 60% at 50% 120%, rgba(20, 184, 166, 0.25), transparent 60%),
+    /* Reflective highlight - top edge shine */
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.3) 5%, transparent 15%),
+    /* Base gradient - teal tinted with more luminosity */
+    linear-gradient(180deg, #ccfbf1 0%, #f0fdfa 20%, #ffffff 50%, #ecfeff 80%, #f0fdfa 100%);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
 }
 
-/* Decorative mesh pattern overlay */
+/* Decorative mesh pattern overlay with reflective spots */
 .ambient-bg::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image: 
-    radial-gradient(circle at 20% 80%, rgba(20, 184, 166, 0.08) 0%, transparent 25%),
-    radial-gradient(circle at 80% 20%, rgba(94, 234, 212, 0.1) 0%, transparent 30%),
-    radial-gradient(circle at 40% 40%, rgba(34, 211, 238, 0.06) 0%, transparent 20%);
+    /* Reflective highlight spots */
+    radial-gradient(circle at 30% 15%, rgba(255, 255, 255, 0.8) 0%, transparent 8%),
+    radial-gradient(circle at 70% 25%, rgba(255, 255, 255, 0.6) 0%, transparent 10%),
+    radial-gradient(circle at 85% 60%, rgba(255, 255, 255, 0.5) 0%, transparent 12%),
+    /* Teal mesh pattern */
+    radial-gradient(circle at 20% 80%, rgba(20, 184, 166, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 80% 20%, rgba(94, 234, 212, 0.12) 0%, transparent 30%),
+    radial-gradient(circle at 40% 40%, rgba(34, 211, 238, 0.08) 0%, transparent 20%);
   pointer-events: none;
   z-index: 0;
 }
 
+
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Radial gradient utility for parallax orbs */
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
+  }
+  
+  /* Rounded inherit for child elements */
+  .rounded-inherit {
+    border-radius: inherit;
   }
 }
 
@@ -121,114 +140,293 @@ body {
   /**
    * GLASS SYSTEM (Three Tiers) - VISIBLE, REFINED
    * Real glass feel with proper blur, borders, and glow
+   * Enhanced with mirror-like reflections for calmness
    */
 
-  /* Glass / Subtle - Teal-tinted translucent panels */
+  /* Glass / Subtle - Teal-tinted translucent panels with soft reflection */
   .glass-subtle {
     background: linear-gradient(
       135deg,
-      rgba(240, 253, 250, 0.7) 0%,
-      rgba(204, 251, 241, 0.4) 50%,
-      rgba(255, 255, 255, 0.5) 100%
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(240, 253, 250, 0.7) 25%,
+      rgba(204, 251, 241, 0.5) 50%,
+      rgba(240, 253, 250, 0.6) 75%,
+      rgba(255, 255, 255, 0.75) 100%
     );
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(20, 184, 166, 0.2);
+    backdrop-filter: blur(24px) saturate(200%) brightness(1.05);
+    -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.05);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
+    border-left: 1px solid rgba(255, 255, 255, 0.7);
     border-radius: 1.25rem;
     box-shadow: 
       0 8px 32px rgba(20, 184, 166, 0.12),
       0 2px 8px rgba(20, 184, 166, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.8),
-      inset 0 -1px 0 rgba(20, 184, 166, 0.1);
+      0 0 1px rgba(255, 255, 255, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      inset 0 2px 4px rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(20, 184, 166, 0.08);
+    position: relative;
   }
 
-  /* Glass / Strong - Premium frosted glass with teal accent */
+  /* Subtle reflection highlight overlay */
+  .glass-subtle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.4) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%
+    );
+    border-radius: 1.25rem 1.25rem 0 0;
+    pointer-events: none;
+  }
+
+  /* Glass / Strong - Premium frosted glass with teal accent and mirror shine */
   .glass-strong {
     background: linear-gradient(
-      135deg,
-      rgba(204, 251, 241, 0.6) 0%,
-      rgba(240, 253, 250, 0.7) 30%,
-      rgba(255, 255, 255, 0.6) 60%,
-      rgba(236, 254, 255, 0.5) 100%
+      145deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(240, 253, 250, 0.85) 20%,
+      rgba(204, 251, 241, 0.7) 40%,
+      rgba(236, 254, 255, 0.6) 60%,
+      rgba(240, 253, 250, 0.7) 80%,
+      rgba(255, 255, 255, 0.8) 100%
     );
-    backdrop-filter: blur(24px) saturate(200%);
-    -webkit-backdrop-filter: blur(24px) saturate(200%);
-    border: 1px solid rgba(20, 184, 166, 0.3);
+    backdrop-filter: blur(32px) saturate(220%) brightness(1.08);
+    -webkit-backdrop-filter: blur(32px) saturate(220%) brightness(1.08);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-top: 1.5px solid rgba(255, 255, 255, 1);
+    border-left: 1.5px solid rgba(255, 255, 255, 0.8);
     border-radius: 1.5rem;
     box-shadow: 
-      0 12px 40px rgba(20, 184, 166, 0.18),
-      0 4px 16px rgba(20, 184, 166, 0.08),
-      inset 0 2px 0 rgba(255, 255, 255, 0.9),
-      inset 0 -1px 0 rgba(20, 184, 166, 0.15);
+      0 16px 48px rgba(20, 184, 166, 0.15),
+      0 8px 24px rgba(20, 184, 166, 0.08),
+      0 4px 12px rgba(0, 0, 0, 0.03),
+      0 0 0 1px rgba(255, 255, 255, 0.5),
+      inset 0 2px 0 rgba(255, 255, 255, 1),
+      inset 0 4px 8px rgba(255, 255, 255, 0.5),
+      inset 0 -2px 4px rgba(20, 184, 166, 0.05);
+    position: relative;
+    overflow: hidden;
   }
 
-  /* Glass / Quiet - Soft teal depth layer */
+  /* Mirror-like reflection shine overlay */
+  .glass-strong::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 45%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.25) 40%,
+      rgba(255, 255, 255, 0.05) 70%,
+      transparent 100%
+    );
+    border-radius: 1.5rem 1.5rem 0 0;
+    pointer-events: none;
+  }
+
+  /* Subtle edge highlight for depth */
+  .glass-strong::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 1.5rem;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(20, 184, 166, 0.03) 100%
+    );
+    pointer-events: none;
+  }
+
+  /* Glass / Quiet - Soft teal depth layer with gentle reflection */
   .glass-quiet {
     background: linear-gradient(
       180deg,
-      rgba(153, 246, 228, 0.2) 0%,
-      rgba(204, 251, 241, 0.15) 100%
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(204, 251, 241, 0.25) 50%,
+      rgba(153, 246, 228, 0.15) 100%
     );
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(20, 184, 166, 0.15);
+    backdrop-filter: blur(16px) saturate(180%) brightness(1.02);
+    -webkit-backdrop-filter: blur(16px) saturate(180%) brightness(1.02);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.7);
     border-radius: 1rem;
     box-shadow: 
       0 4px 20px rgba(20, 184, 166, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 0 2px 4px rgba(255, 255, 255, 0.3);
   }
 
-  /* Glass card with hover lift effect */
+  /* Glass card with hover lift effect and mirror reflection */
   .glass-card {
     background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.6) 0%,
-      rgba(255, 255, 255, 0.4) 100%
+      145deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.7) 30%,
+      rgba(240, 253, 250, 0.6) 60%,
+      rgba(255, 255, 255, 0.7) 100%
     );
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(200%) brightness(1.05);
+    -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.05);
     border: 1px solid rgba(255, 255, 255, 0.7);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.95);
+    border-left: 1.5px solid rgba(255, 255, 255, 0.8);
     border-radius: 1.25rem;
     box-shadow: 
-      0 8px 32px rgba(20, 184, 166, 0.08),
+      0 8px 32px rgba(20, 184, 166, 0.1),
       0 4px 12px rgba(0, 0, 0, 0.03),
-      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      0 0 0 1px rgba(255, 255, 255, 0.4),
+      inset 0 2px 0 rgba(255, 255, 255, 1),
+      inset 0 3px 6px rgba(255, 255, 255, 0.4);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.15) 50%,
+      transparent 100%
+    );
+    border-radius: 1.25rem 1.25rem 0 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
   }
 
   .glass-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     box-shadow: 
-      0 12px 48px rgba(20, 184, 166, 0.12),
-      0 8px 24px rgba(0, 0, 0, 0.05),
-      inset 0 1px 0 rgba(255, 255, 255, 1);
+      0 16px 56px rgba(20, 184, 166, 0.15),
+      0 12px 32px rgba(0, 0, 0, 0.06),
+      0 0 0 1px rgba(255, 255, 255, 0.6),
+      inset 0 2px 0 rgba(255, 255, 255, 1),
+      inset 0 4px 8px rgba(255, 255, 255, 0.5);
+  }
+
+  .glass-card:hover::before {
+    opacity: 0.8;
   }
 
   /**
-   * FLOATING ORBS - 3D depth elements
+   * FLOATING ORBS - 3D depth elements with luminous reflections
    */
   .orb {
     position: absolute;
     border-radius: 50%;
     filter: blur(60px);
     pointer-events: none;
-    opacity: 0.6;
+    opacity: 0.7;
   }
 
   .orb-teal {
-    background: radial-gradient(circle, rgba(20, 184, 166, 0.5) 0%, rgba(94, 234, 212, 0.3) 40%, transparent 70%);
+    background: 
+      radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.6) 0%, transparent 30%),
+      radial-gradient(circle, rgba(20, 184, 166, 0.55) 0%, rgba(94, 234, 212, 0.35) 40%, transparent 70%);
   }
 
   .orb-cyan {
-    background: radial-gradient(circle, rgba(34, 211, 238, 0.4) 0%, rgba(20, 184, 166, 0.2) 50%, transparent 70%);
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5) 0%, transparent 25%),
+      radial-gradient(circle, rgba(34, 211, 238, 0.45) 0%, rgba(20, 184, 166, 0.25) 50%, transparent 70%);
   }
 
   .orb-purple {
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, transparent 70%);
+    background: 
+      radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.4) 0%, transparent 20%),
+      radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%);
   }
 
   .orb-teal-strong {
-    background: radial-gradient(circle, rgba(13, 148, 136, 0.6) 0%, rgba(20, 184, 166, 0.3) 40%, transparent 70%);
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.7) 0%, transparent 35%),
+      radial-gradient(circle, rgba(13, 148, 136, 0.65) 0%, rgba(20, 184, 166, 0.35) 40%, transparent 70%);
+  }
+
+  /* Reflective orb variant - for special emphasis */
+  .orb-reflective {
+    background: 
+      radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.3) 20%, transparent 40%),
+      radial-gradient(circle, rgba(20, 184, 166, 0.5) 0%, rgba(94, 234, 212, 0.3) 50%, transparent 75%);
+    opacity: 0.8;
+  }
+
+  /**
+   * GLOW EFFECTS - Mirror-like reflections
+   */
+  .glow-teal {
+    box-shadow: 
+      0 0 20px rgba(20, 184, 166, 0.25),
+      0 0 40px rgba(20, 184, 166, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .glow-teal-soft {
+    box-shadow: 
+      0 0 15px rgba(20, 184, 166, 0.15),
+      0 0 30px rgba(20, 184, 166, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .glow-teal-strong {
+    box-shadow: 
+      0 0 30px rgba(20, 184, 166, 0.35),
+      0 0 60px rgba(20, 184, 166, 0.2),
+      0 0 80px rgba(20, 184, 166, 0.1),
+      inset 0 2px 0 rgba(255, 255, 255, 1);
+  }
+
+  /* Mirror shine effect - adds a diagonal reflection line */
+  .mirror-shine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mirror-shine::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 45%,
+      rgba(255, 255, 255, 0.1) 48%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0.1) 52%,
+      transparent 55%
+    );
+    pointer-events: none;
+    animation: mirror-sweep 8s ease-in-out infinite;
+  }
+
+  @keyframes mirror-sweep {
+    0%, 100% { transform: translateX(-100%) translateY(-100%) rotate(0deg); }
+    50% { transform: translateX(100%) translateY(100%) rotate(0deg); }
   }
 
   /**

@@ -4,18 +4,16 @@
  * DriftMirror Check-in Page
  * ============================================================
  * 
- * Minimum-action-centered check-in flow:
- * 1. "Did you do your minimum?" (prominently displayed)
- * 2. "Did you do more?" (optional)
- * 3. Friction slider
+ * Award-winning design with:
+ * - Smooth step-by-step animations
+ * - Satisfying button interactions
+ * - Visual feedback for selections
  */
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Slider } from '@/components/ui/Slider';
-import { ArrowLeft, Zap, Loader2, Check, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Zap, Loader2, Check, X, Sparkles, MessageSquare, ThumbsUp } from 'lucide-react';
 import { api, Dashboard, ApiError } from '@/lib/api';
 import { sanitizeText, INPUT_LIMITS } from '@/lib/validation';
 import { useCelebration } from '@/components/CelebrationProvider';
@@ -100,21 +98,46 @@ function CheckinContent() {
 
   const minimumAction = dashboard.resolution.minimum_action_text 
     || `${dashboard.resolution.min_minutes} min on your goal`;
-  const frictionLabels = ['Easy', 'Some effort', 'Hard'];
+  const frictionLabels = ['Effortless', 'Some effort', 'Challenging'];
+  const frictionEmojis = ['😊', '💪', '🔥'];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { type: 'spring', stiffness: 300, damping: 24 }
+    }
+  };
 
   return (
     <div className="min-h-screen pb-8">
-      <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+      <motion.div 
+        className="max-w-lg mx-auto px-4 py-8 space-y-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         
         {/* Header */}
-        <header className="flex items-center gap-4 animate-fade-in-up">
-          <button
+        <motion.header variants={itemVariants} className="flex items-center gap-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => router.push(goalId ? `/dashboard/${goalId}` : '/dashboard')}
-            className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
+            className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-colors"
             aria-label="Back to dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
-          </button>
+          </motion.button>
           <div>
             <h1 className="text-xl font-semibold text-neutral-800">
               Quick Check-in
@@ -123,140 +146,232 @@ function CheckinContent() {
               {dashboard.resolution.title}
             </p>
           </div>
-        </header>
+        </motion.header>
 
         {/* Main Card: Your Minimum Action */}
-        <div className="glass-strong rounded-2xl p-6 space-y-5 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <motion.div variants={itemVariants} className="glass-strong rounded-2xl p-6 space-y-5">
           
           {/* Minimum action display */}
-          <div className="flex items-start gap-3 p-4 glass-quiet rounded-xl">
-            <div className="p-2 rounded-lg bg-amber-100">
+          <motion.div 
+            className="flex items-start gap-3 p-4 glass-quiet rounded-xl"
+            whileHover={{ scale: 1.01 }}
+          >
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 shadow-lg shadow-amber-200/50">
               <Zap className="w-5 h-5 text-amber-600" />
             </div>
             <div>
               <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                 Your Minimum Action
               </p>
-              <p className="text-neutral-800 font-medium">
+              <p className="text-neutral-800 font-medium text-lg">
                 {minimumAction}
               </p>
               <p className="text-xs text-neutral-400 mt-1">
-                {dashboard.resolution.min_minutes} minutes
+                Just {dashboard.resolution.min_minutes} minutes
               </p>
             </div>
-          </div>
+          </motion.div>
 
           {/* The main question */}
           <div className="text-center py-2">
-            <p className="text-lg font-medium text-neutral-700">
-              Did you do your minimum action today?
+            <p className="text-xl font-semibold text-neutral-800">
+              Did you do it today?
             </p>
           </div>
 
-          {/* Yes / No buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
+          {/* Yes / No buttons with spring animations */}
+          <div className="grid grid-cols-2 gap-4">
+            <motion.button
               type="button"
               onClick={() => setDidMinimum(true)}
-              className={`flex items-center justify-center gap-2 p-4 rounded-xl font-medium transition-all ${
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              animate={didMinimum === true ? { 
+                scale: [1, 1.05, 1],
+                transition: { duration: 0.3 }
+              } : {}}
+              className={`relative flex flex-col items-center justify-center gap-2 p-5 rounded-2xl font-medium transition-all overflow-hidden ${
                 didMinimum === true
-                  ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
+                  ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-xl shadow-teal-500/30'
                   : 'glass-subtle text-neutral-600 hover:bg-teal-50 hover:text-teal-600'
               }`}
             >
-              <Check className="w-5 h-5" />
-              Yes, I did!
-            </button>
-            <button
+              {didMinimum === true && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute inset-0 bg-white/10"
+                />
+              )}
+              <Check className="w-8 h-8" />
+              <span className="text-lg">Yes!</span>
+              {didMinimum === true && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute top-2 right-2"
+                >
+                  <Sparkles className="w-5 h-5" />
+                </motion.div>
+              )}
+            </motion.button>
+            <motion.button
               type="button"
               onClick={() => setDidMinimum(false)}
-              className={`flex items-center justify-center gap-2 p-4 rounded-xl font-medium transition-all ${
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl font-medium transition-all ${
                 didMinimum === false
-                  ? 'bg-neutral-500 text-white shadow-lg shadow-neutral-500/25'
+                  ? 'bg-gradient-to-br from-neutral-500 to-neutral-600 text-white shadow-xl shadow-neutral-500/30'
                   : 'glass-subtle text-neutral-600 hover:bg-neutral-100'
               }`}
             >
-              <X className="w-5 h-5" />
-              Not today
-            </button>
+              <X className="w-8 h-8" />
+              <span className="text-lg">Not today</span>
+            </motion.button>
           </div>
 
           {/* Error display */}
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">
-              {error}
-            </div>
-          )}
-        </div>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
-        {/* Tell us more - required field for tracking progress over 90 days */}
-        {didMinimum !== null && (
-          <div className="glass-strong rounded-2xl p-6 space-y-4 animate-fade-in-up">
-            <label className="block text-sm font-medium text-neutral-700">
-              Tell us more about what you did
-            </label>
-            <textarea
-              value={progressNote}
-              onChange={(e) => setProgressNote(e.target.value)}
-              placeholder={didMinimum 
-                ? "e.g., Practiced for 30 min, focused on chord transitions..." 
-                : "e.g., Got busy with work but did 2 min of stretching..."}
-              maxLength={INPUT_LIMITS.ACTUAL_MAX_LENGTH}
-              className="w-full h-24 bg-white/50 border border-white/60 rounded-xl p-3 text-neutral-800 placeholder:text-neutral-400 focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-              required
-            />
-            <p className="text-xs text-neutral-400">
-              📝 This helps track your progress over 90 days and builds your habit story.
-            </p>
-          </div>
-        )}
-
-        {/* Friction slider - show once they've answered */}
-        {didMinimum !== null && (
-          <div className="glass-strong rounded-2xl p-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            <div className="flex items-center justify-between mb-4">
-              <label className="text-sm font-medium text-neutral-700">
-                How did it feel?
-              </label>
-              <span className="text-sm font-medium text-teal-600">
-                {frictionLabels[friction - 1]}
-              </span>
-            </div>
-            <Slider
-              min={1}
-              max={3}
-              value={friction}
-              onChange={setFriction}
-              label="Friction level"
-            />
-            <div className="flex justify-between mt-3 text-xs text-neutral-400">
-              <span>Easy</span>
-              <span>Hard</span>
-            </div>
-          </div>
-        )}
-
-        {/* Submit button */}
-        {didMinimum !== null && (
-          <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <Button 
-              onClick={handleSubmit}
-              size="lg" 
-              className="w-full"
-              disabled={loading || !progressNote.trim()}
+        {/* Tell us more - animated appearance */}
+        <AnimatePresence>
+          {didMinimum !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="glass-strong rounded-2xl p-6 space-y-4"
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </span>
-              ) : (
-                'Save Check-in'
-              )}
-            </Button>
-          </div>
-        )}
-      </div>
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="w-5 h-5 text-teal-500" />
+                <label className="text-sm font-medium text-neutral-700">
+                  Tell us about it
+                </label>
+              </div>
+              <motion.textarea
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                value={progressNote}
+                onChange={(e) => setProgressNote(e.target.value)}
+                placeholder={didMinimum 
+                  ? "e.g., Practiced for 30 min, focused on chord transitions..." 
+                  : "e.g., Got busy with work but did 2 min of stretching..."}
+                maxLength={INPUT_LIMITS.ACTUAL_MAX_LENGTH}
+                className="w-full h-28 bg-white/60 border border-white/60 rounded-xl p-4 text-neutral-800 placeholder:text-neutral-400 focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none transition-all"
+                required
+              />
+              <p className="text-xs text-neutral-400 flex items-center gap-1">
+                <ThumbsUp className="w-3 h-3" />
+                This builds your 90-day habit story
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Friction slider with animated circles */}
+        <AnimatePresence>
+          {didMinimum !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.05 }}
+              className="glass-strong rounded-2xl p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <label className="text-sm font-medium text-neutral-700">
+                  How did it feel?
+                </label>
+                <motion.span 
+                  key={friction}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-2xl"
+                >
+                  {frictionEmojis[friction - 1]}
+                </motion.span>
+              </div>
+              
+              {/* Custom friction selector */}
+              <div className="flex justify-between gap-3">
+                {[1, 2, 3].map((level) => (
+                  <motion.button
+                    key={level}
+                    type="button"
+                    onClick={() => setFriction(level)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex-1 py-4 px-3 rounded-xl font-medium transition-all ${
+                      friction === level
+                        ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30'
+                        : 'glass-subtle text-neutral-600 hover:bg-teal-50'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-lg mb-1">{frictionEmojis[level - 1]}</div>
+                      <div className="text-xs">{frictionLabels[level - 1]}</div>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Submit button with spring animation */}
+        <AnimatePresence>
+          {didMinimum !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
+            >
+              <motion.button
+                onClick={handleSubmit}
+                disabled={loading || !progressNote.trim()}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className={`
+                  w-full py-4 px-6 rounded-2xl font-semibold text-lg
+                  transition-all duration-200
+                  ${loading || !progressNote.trim()
+                    ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-xl shadow-teal-500/30 hover:shadow-2xl hover:shadow-teal-500/40'
+                  }
+                `}
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Check className="w-5 h-5" />
+                    Save Check-in
+                  </span>
+                )}
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }
