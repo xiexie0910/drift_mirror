@@ -57,9 +57,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob:",
               "font-src 'self' https://fonts.gstatic.com",
-              isProd
-                ? "connect-src 'self'"
-                : `connect-src 'self' ${backendUrl}`,
+              `connect-src 'self' ${backendUrl}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -74,10 +72,8 @@ const nextConfig = {
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
 
-  // API proxy - only needed in local development.
-  // On Vercel, /api/* is handled by the Python serverless function (same origin).
+  // API proxy - backend not directly exposed to client
   async rewrites() {
-    if (isProd) return [];
     return [
       {
         source: '/api/:path*/',

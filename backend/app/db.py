@@ -1,12 +1,7 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Use /tmp for serverless environments (Vercel), local file otherwise
-if os.getenv("VERCEL"):
-    DATABASE_URL = "sqlite:////tmp/driftmirror.db"
-else:
-    DATABASE_URL = "sqlite:///./driftmirror.db"
+DATABASE_URL = "sqlite:///./driftmirror.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
