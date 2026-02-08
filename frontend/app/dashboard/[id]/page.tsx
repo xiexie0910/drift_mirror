@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/Button';
 import { MetricPills } from '@/components/MetricPills';
 import { Timeline } from '@/components/Timeline';
 import { InsightCard } from '@/components/InsightCard';
+import { DriftGauge } from '@/components/DriftGauge';
 import { 
   ArrowLeft, Plus, ArrowRight, Sparkles, Target, 
   Trash2, Calendar, Clock, Flag, Zap, TrendingUp, X, Loader2, Check
@@ -131,7 +132,7 @@ const handleSaveMinAction = async () => {
     
     setSavingMinAction(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/resolutions/${goalId}/minimum-action`, {
+      const response = await fetch(`/api/resolutions/${goalId}/minimum-action`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ minimum_action_text: minActionText.trim() })
@@ -284,6 +285,12 @@ const handleSaveMinAction = async () => {
               Progress
             </h2>
           </div>
+          
+          {/* Drift Gauge - centered above metrics */}
+          <div className="flex justify-center mb-6">
+            <DriftGauge score={metrics.drift_score} size={130} />
+          </div>
+          
           <MetricPills metrics={metrics} />
         </section>
 
@@ -611,26 +618,18 @@ const handleSaveMinAction = async () => {
                 <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
                   Planned
                 </p>
-                <div 
-                  contentEditable
-                  suppressContentEditableWarning
-                  className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
-                >
+                <p className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30">
                   {selectedCheckin.planned}
-                </div>
+                </p>
               </div>
 
               <div className="border-t border-white/20 pt-4">
                 <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
                   What Happened
                 </p>
-                <div 
-                  contentEditable
-                  suppressContentEditableWarning
-                  className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
-                >
+                <p className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30">
                   {selectedCheckin.actual}
-                </div>
+                </p>
               </div>
 
               {/* Grid Details */}
@@ -659,13 +658,9 @@ const handleSaveMinAction = async () => {
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
                     What Got in the Way
                   </p>
-                  <div 
-                    contentEditable
-                    suppressContentEditableWarning
-                    className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
-                  >
+                  <p className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30">
                     {selectedCheckin.blocker}
-                  </div>
+                  </p>
                 </div>
               )}
 
@@ -675,13 +670,9 @@ const handleSaveMinAction = async () => {
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
                     Extra Work
                   </p>
-                  <div 
-                    contentEditable
-                    suppressContentEditableWarning
-                    className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30 hover:bg-white/50 focus:bg-white/50 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors cursor-text"
-                  >
+                  <p className="text-neutral-800 text-sm p-2 rounded border border-neutral-200 bg-white/30">
                     {selectedCheckin.extra_done}
-                  </div>
+                  </p>
                 </div>
               )}
             </div>

@@ -48,7 +48,7 @@ export function InsightCard({
         suggested_changes: Object.keys(editableChanges).length > 0 ? editableChanges : null
       };
 
-      const response = await fetch(`http://localhost:8000/api/resolutions/${resolutionId}/insights/actions`, {
+      const response = await fetch(`/api/resolutions/${resolutionId}/insights/actions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

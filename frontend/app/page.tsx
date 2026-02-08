@@ -12,13 +12,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Play } from 'lucide-react';
 import { api } from '@/lib/api';
 
 export default function Home() {
   const router = useRouter();
   const [hasResolution, setHasResolution] = useState<boolean | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   useEffect(() => {
     // Check if user has any goals - if so, go to unified dashboard
@@ -110,6 +111,34 @@ export default function Home() {
             <ArrowRight 
               className={`w-5 h-5 relative z-10 transition-transform duration-300 ${isHovered ? 'translate-x-1' : ''}`} 
             />
+          </button>
+          
+          {/* Demo CTA */}
+          <button 
+            onClick={async () => {
+              setIsDemoLoading(true);
+              try {
+                const result = await api.seedDemo();
+                router.push(`/dashboard/${result.resolution_id}`);
+              } catch (err) {
+                console.error('Demo seed failed:', err);
+                setIsDemoLoading(false);
+              }
+            }}
+            disabled={isDemoLoading}
+            className="w-full py-3 px-6 rounded-xl font-medium text-sm flex items-center justify-center gap-2 glass-subtle text-teal-700 hover:bg-teal-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDemoLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                <span>Loading demo...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                <span>Try a demo instead</span>
+              </>
+            )}
           </button>
         </div>
 

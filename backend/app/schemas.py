@@ -156,6 +156,15 @@ class InsightActionResponse(BaseModel):
 
 
 # ============================================================
+# Minimum Action Update
+# ============================================================
+
+class MinimumActionUpdate(BaseModel):
+    """Update the minimum action text for a resolution."""
+    minimum_action_text: str = Field(..., min_length=1, max_length=300)
+
+
+# ============================================================
 # Diary Feature Schemas
 # ============================================================
 

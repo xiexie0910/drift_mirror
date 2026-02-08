@@ -28,7 +28,7 @@ function MirrorContent() {
   useEffect(() => {
     const loadDashboard = goalId 
       ? api.getDashboardForResolution(Number(goalId))
-      : api.getDashboard();
+      : api.getLatestDashboard();
       
     loadDashboard
       .then(setDashboard)

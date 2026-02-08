@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models import Resolution, Plan, Checkin, Signal, MirrorReport, InsightAction
-from app.schemas import ResolutionCreate, ResolutionResponse, PlanResponse, InsightActionCreate, InsightActionResponse
+from app.models import Resolution, Plan, Checkin, Signal, MirrorReport, InsightAction, Feedback, DiaryEntry, QuarterlyReview
+from app.schemas import ResolutionCreate, ResolutionResponse, PlanResponse, InsightActionCreate, InsightActionResponse, MinimumActionUpdate
 
 router = APIRouter()
 
@@ -156,17 +156,13 @@ async def get_insight_actions(resolution_id: int, db: Session = Depends(get_db))
     ).order_by(InsightAction.created_at.desc()).all()
 
 @router.patch("/{resolution_id}/minimum-action")
-async def update_minimum_action(resolution_id: int, data: dict, db: Session = Depends(get_db)):
+async def update_minimum_action(resolution_id: int, data: MinimumActionUpdate, db: Session = Depends(get_db)):
     """Update the minimum action text for a resolution."""
     resolution = db.query(Resolution).filter(Resolution.id == resolution_id).first()
     if not resolution:
         raise HTTPException(status_code=404, detail="Resolution not found")
     
-    minimum_action_text = data.get('minimum_action_text', '').strip()
-    if not minimum_action_text:
-        raise HTTPException(status_code=400, detail="Minimum action text cannot be empty")
-    
-    resolution.minimum_action_text = minimum_action_text
+    resolution.minimum_action_text = data.minimum_action_text.strip()
     db.commit()
     db.refresh(resolution)
     
@@ -179,6 +175,15 @@ async def delete_resolution(resolution_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Resolution not found")
     
     # Delete related records (cascading)
+    # Delete insight actions
+    db.query(InsightAction).filter(InsightAction.resolution_id == resolution_id).delete(synchronize_session=False)
+    
+    # Delete diary entries
+    db.query(DiaryEntry).filter(DiaryEntry.resolution_id == resolution_id).delete(synchronize_session=False)
+    
+    # Delete quarterly reviews
+    db.query(QuarterlyReview).filter(QuarterlyReview.resolution_id == resolution_id).delete(synchronize_session=False)
+    
     # Delete signals via checkins
     checkin_ids = [c.id for c in db.query(Checkin).filter(Checkin.resolution_id == resolution_id).all()]
     if checkin_ids:
@@ -186,6 +191,11 @@ async def delete_resolution(resolution_id: int, db: Session = Depends(get_db)):
     
     # Delete checkins
     db.query(Checkin).filter(Checkin.resolution_id == resolution_id).delete(synchronize_session=False)
+    
+    # Delete feedback via mirror reports
+    mirror_ids = [m.id for m in db.query(MirrorReport).filter(MirrorReport.resolution_id == resolution_id).all()]
+    if mirror_ids:
+        db.query(Feedback).filter(Feedback.mirror_report_id.in_(mirror_ids)).delete(synchronize_session=False)
     
     # Delete mirror reports
     db.query(MirrorReport).filter(MirrorReport.resolution_id == resolution_id).delete(synchronize_session=False)

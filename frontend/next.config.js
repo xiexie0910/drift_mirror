@@ -6,7 +6,14 @@
  * - Security headers (CSP, X-Frame-Options, etc.)
  * - X-Powered-By header removed
  * - API proxy (no direct backend exposure)
+ * 
+ * Environment Variables:
+ * - NEXT_PUBLIC_API_URL: Backend API URL (e.g., https://your-backend.railway.app)
+ *   If not set, uses local proxy rewrites to 127.0.0.1:8000
  */
+
+const isProd = process.env.NODE_ENV === 'production';
+const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -29,11 +36,6 @@ const nextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
-          // Enable XSS filter
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
           // Referrer policy
           {
             key: 'Referrer-Policy',
@@ -49,11 +51,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires unsafe-inline/eval in dev
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind + Google Fonts
+              isProd
+                ? "script-src 'self' 'unsafe-inline'"
+                : "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js dev requires unsafe-eval
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000", // API in development
+              `connect-src 'self' ${backendUrl}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -73,11 +77,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*/',
-        destination: 'http://127.0.0.1:8000/api/:path*/',
+        destination: `${backendUrl}/api/:path*/`,
       },
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },

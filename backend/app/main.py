@@ -6,7 +6,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
 
 from app.db import init_db
-from app.routes import resolutions, checkins, dashboard, reality_check
+from app.routes import resolutions, checkins, dashboard, reality_check, demo
 
 # Environment configuration
 IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
@@ -22,7 +22,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Prevent XSS attacks
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         # Referrer policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         # Content Security Policy (API only, so restrictive)
@@ -68,6 +67,7 @@ app.include_router(resolutions.router, prefix="/api/resolutions", tags=["resolut
 app.include_router(checkins.router, prefix="/api/checkins", tags=["checkins"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(reality_check.router, prefix="/api/reality-check", tags=["reality-check"])
+app.include_router(demo.router, prefix="/api/demo", tags=["demo"])
 
 @app.get("/api/health")
 async def health():

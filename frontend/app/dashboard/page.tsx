@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { Plus, Target, Trash2, Calendar, ChevronRight } from 'lucide-react';
+import { Plus, Target, Trash2, Calendar, ChevronRight, Play } from 'lucide-react';
 import { api, Resolution, ApiError } from '@/lib/api';
 
 export default function DashboardPage() {
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<Resolution[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   const loadGoals = useCallback(async () => {
     try {
@@ -160,10 +161,38 @@ export default function DashboardPage() {
             <p className="text-sm text-neutral-500 mb-6">
               Create your first goal to start tracking your progress.
             </p>
-            <Button onClick={() => router.push('/onboarding')} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Create First Goal
-            </Button>
+            <div className="flex flex-col gap-3 items-center">
+              <Button onClick={() => router.push('/onboarding')} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Create First Goal
+              </Button>
+              <button
+                onClick={async () => {
+                  setIsDemoLoading(true);
+                  try {
+                    const result = await api.seedDemo();
+                    router.push(`/dashboard/${result.resolution_id}`);
+                  } catch (err) {
+                    console.error('Demo seed failed:', err);
+                    setIsDemoLoading(false);
+                  }
+                }}
+                disabled={isDemoLoading}
+                className="px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2 text-teal-600 hover:bg-teal-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDemoLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                    <span>Loading demo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    <span>or try a demo</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -171,15 +200,36 @@ export default function DashboardPage() {
       {/* Fixed bottom action - only show if goals exist */}
       {goals.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-white/20">
-          <div className="max-w-lg mx-auto">
+          <div className="max-w-lg mx-auto flex gap-3">
             <Button 
               onClick={() => router.push('/onboarding')} 
               size="lg" 
-              className="w-full gap-2"
+              className="flex-1 gap-2"
             >
               <Plus className="w-5 h-5" />
-              Create New Goal
+              New Goal
             </Button>
+            <button
+              onClick={async () => {
+                setIsDemoLoading(true);
+                try {
+                  const result = await api.seedDemo();
+                  router.push(`/dashboard/${result.resolution_id}`);
+                } catch (err) {
+                  console.error('Demo seed failed:', err);
+                  setIsDemoLoading(false);
+                }
+              }}
+              disabled={isDemoLoading}
+              className="px-4 rounded-xl font-medium text-sm flex items-center gap-2 glass-subtle text-teal-700 hover:bg-teal-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDemoLoading ? (
+                <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              <span>Demo</span>
+            </button>
           </div>
         </div>
       )}
