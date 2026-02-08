@@ -1,10 +1,13 @@
 """
 Reality Check Assessor - LLM-powered goal refinement for onboarding wizard.
 """
+import logging
 from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 
 from app.services.llm_client import call_llm, extract_json_from_response
+
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # Pydantic Schemas
@@ -200,7 +203,7 @@ EXAMPLES:
 
 Return JSON with status, issues, rewrite_options (1 complete alternative), best_guess_refinement, confidence."""
 
-    return ""
+    raise ValueError(f"Unknown reality check step: {step}")
 
 # ============================================================
 # Main Reality Check Function
@@ -247,4 +250,14 @@ async def run_reality_check(
                 # Silent fail - will retry
                 continue
     
-    raise RuntimeError("Reality check failed to produce a valid Gemini response")
+    # Deterministic fallback — allow user to proceed
+    logger.warning("Reality check LLM failed after retries; returning ok fallback")
+    return RealityCheckResponse(
+        status="ok",
+        issues=[],
+        rewrite_options=[],
+        clarifying_questions=[],
+        best_guess_refinement=None,
+        confidence=0.5,
+        debug={"model_used": "fallback", "fallback_used": True},
+    )

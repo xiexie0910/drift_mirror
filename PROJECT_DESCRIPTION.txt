@@ -42,9 +42,8 @@ Text Processing:  PySpellChecker 0.8.0+
 
 LLM INTEGRATION
 --------------------------------------------------------------------------------
-Provider:         Ollama (local LLM server)
-Default Model:    Gemma2:2b
-Context Window:   8192 tokens
+Provider:         Google Gemini (via google-genai SDK)
+Default Model:    gemini-2.5-flash-lite (configurable via GEMINI_MODEL env var)
 Fallback:         Deterministic stub responses when LLM unavailable
 
 DEVELOPMENT TOOLS

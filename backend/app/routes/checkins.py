@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+import logging
+
 from app.db import get_db
 from app.models import Resolution, Plan, Checkin, Signal, MirrorReport
 from app.schemas import CheckinCreate, CheckinResponse, SignalResponse, MirrorReportResponse, DebugPayload
@@ -8,11 +10,13 @@ from app.services.drift import compute_drift_score, should_trigger_mirror, get_d
 from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.prompts import SIGNAL_EXTRACTOR_SYSTEM, SIGNAL_EXTRACTOR_PROMPT, MIRROR_COMPOSER_SYSTEM, MIRROR_COMPOSER_PROMPT
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 def generate_actionable_suggestions(
     checkins: List[Checkin], 
-    current_plan: Plan, 
+    current_plan: Optional[Plan], 
     drift_score: float,
     frequency_stats: dict
 ) -> List[dict]:
@@ -181,7 +185,7 @@ async def create_checkin(data: CheckinCreate, db: Session = Depends(get_db)):
             )
         except Exception as e:
             # Log the error but don't fail the check-in
-            print(f"⚠️  Mirror composition failed: {str(e)}")
+            logger.error(f"Mirror composition failed: {e}", exc_info=True)
             # Don't create a mirror report, but check-in will still succeed
             mirror = None
         
@@ -283,7 +287,7 @@ async def compose_mirror(
     signals: List[Signal], 
     drift_score: float, 
     db: Session,
-    all_checkins: List[Checkin] = None
+    all_checkins: Optional[List[Checkin]] = None
 ) -> dict:
     """Compose mirror report using LLM with enriched check-in data."""
     # Get current plan
@@ -348,7 +352,105 @@ async def compose_mirror(
     if result and "findings" in result:
         return result
     
-    raise HTTPException(status_code=502, detail="Gemini failed to compose mirror report")
+    # Fallback: build a deterministic mirror report from actual check-in data
+    logger.warning("LLM mirror composition returned no findings; using rule-based fallback")
+    return _build_fallback_mirror(resolution, all_checkins or [], drift_score)
+
+
+def _build_fallback_mirror(
+    resolution: Resolution,
+    checkins: List[Checkin],
+    drift_score: float,
+) -> dict:
+    """
+    Build a deterministic mirror report when the LLM is unavailable.
+    Uses actual check-in data to generate meaningful findings.
+    """
+    recent = checkins[:7]
+    n = len(recent)
+
+    if n == 0:
+        return {
+            "findings": [
+                {
+                    "finding": "Not enough data to identify patterns yet.",
+                    "evidence": ["Keep checking in — we need a few sessions to spot trends."],
+                    "order": 1,
+                    "root_cause_hypothesis": None,
+                }
+            ],
+            "counterfactual": None,
+            "recurring_blockers": [],
+            "strength_pattern": None,
+        }
+
+    # Compute basic stats
+    completed = sum(1 for c in recent if c.did_minimum_action)
+    missed = n - completed
+    high_friction = sum(1 for c in recent if c.friction >= 3)
+    blockers = [c.blocker for c in recent if c.blocker]
+
+    findings = []
+
+    # Finding 1: Completion pattern
+    rate = completed / n
+    if rate >= 0.8:
+        findings.append({
+            "finding": f"Strong consistency — you completed {completed}/{n} recent sessions.",
+            "evidence": [
+                f"{int(rate * 100)}% completion rate over last {n} check-ins",
+            ],
+            "order": 1,
+            "root_cause_hypothesis": "Your current cadence matches your reality well.",
+        })
+    elif missed >= 3:
+        evidence = [f"Missed {missed} of last {n} sessions"]
+        if blockers:
+            evidence.append(f'Most recent blocker: "{blockers[0]}"')
+        findings.append({
+            "finding": f"Momentum has dipped — {missed} missed sessions recently.",
+            "evidence": evidence,
+            "order": 1,
+            "root_cause_hypothesis": "The current plan may not fit your schedule.",
+        })
+
+    # Finding 2: Friction pattern
+    if high_friction >= 2:
+        findings.append({
+            "finding": f"Friction is high — {high_friction} of {n} sessions felt hard.",
+            "evidence": [f"Average friction: {sum(c.friction for c in recent) / n:.1f}/3"],
+            "order": 2,
+            "root_cause_hypothesis": "Consider reducing session duration or simplifying the minimum action.",
+        })
+
+    # Ensure at least one finding
+    if not findings:
+        findings.append({
+            "finding": "Your pattern looks steady — keep going.",
+            "evidence": [f"{completed}/{n} sessions completed"],
+            "order": 1,
+            "root_cause_hypothesis": None,
+        })
+
+    # Recurring blockers
+    recurring = []
+    if blockers:
+        from collections import Counter
+        counts = Counter(blockers)
+        recurring = [f"{b} ({c} times)" if c > 1 else b for b, c in counts.most_common(3)]
+
+    # Strength pattern
+    extras = [c.extra_done for c in recent if c.extra_done]
+    strength = None
+    if extras:
+        strength = f"When you show up, you often do more than the minimum — {len(extras)} sessions with extra effort."
+
+    return {
+        "findings": findings,
+        "counterfactual": None,
+        "recurring_blockers": recurring,
+        "strength_pattern": strength,
+    }
 
 @router.get("/{resolution_id}/", response_model=List[CheckinResponse])
 async def get_checkins(resolution_id: int, db: Session = Depends(get_db)):

@@ -1,12 +1,15 @@
 """
 Progress Summary Service - Generates AI-powered progress summaries from check-in notes.
 """
+import logging
 from typing import Optional, List
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 from app.services.llm_client import call_llm, extract_json_from_response
 from app.services.prompts import PROGRESS_SUMMARY_SYSTEM, PROGRESS_SUMMARY_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 class ProgressSummaryResponse(BaseModel):
@@ -57,19 +60,27 @@ async def generate_progress_summary(
         days_to_habit=days_to_habit
     )
     
-    response = await call_llm(prompt, PROGRESS_SUMMARY_SYSTEM)
-    parsed = extract_json_from_response(response)
-    
-    if not parsed:
-        raise RuntimeError("Gemini failed to generate progress summary")
-    
     try:
-        return ProgressSummaryResponse(
-            overall_progress=parsed.get("overall_progress", ""),
-            key_wins=parsed.get("key_wins", [])[:3],
-            growth_observed=parsed.get("growth_observed", ""),
-            encouragement=parsed.get("encouragement", ""),
-            days_to_habit=parsed.get("days_to_habit", days_to_habit)
-        )
+        response = await call_llm(prompt, PROGRESS_SUMMARY_SYSTEM)
+        parsed = extract_json_from_response(response)
+        
+        if parsed:
+            return ProgressSummaryResponse(
+                overall_progress=parsed.get("overall_progress", ""),
+                key_wins=parsed.get("key_wins", [])[:3],
+                growth_observed=parsed.get("growth_observed", ""),
+                encouragement=parsed.get("encouragement", ""),
+                days_to_habit=parsed.get("days_to_habit", days_to_habit)
+            )
     except Exception as e:
-        raise RuntimeError("Gemini returned invalid progress summary") from e
+        logger.warning(f"LLM progress summary failed, using fallback: {e}")
+
+    # Deterministic fallback when LLM is unavailable
+    rate_pct = int(completion_rate * 100)
+    return ProgressSummaryResponse(
+        overall_progress=f"You've checked in {total_checkins} times with a {rate_pct}% completion rate over {days_tracked} days.",
+        key_wins=[n['note'] for n in notes[:3] if n.get('did_minimum')],
+        growth_observed="Keep showing up — patterns become clearer with more data.",
+        encouragement="Every check-in counts, even the imperfect ones.",
+        days_to_habit=days_to_habit,
+    )

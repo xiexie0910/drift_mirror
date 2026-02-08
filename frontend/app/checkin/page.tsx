@@ -12,6 +12,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
@@ -108,13 +109,13 @@ function CheckinContent() {
         
         {/* Header */}
         <header className="flex items-center gap-4 animate-fade-in-up">
-          <button
-            onClick={() => router.push(goalId ? `/dashboard/${goalId}` : '/dashboard')}
+          <Link
+            href={goalId ? `/dashboard/${goalId}` : '/dashboard'}
             className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
             aria-label="Back to dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-xl font-semibold text-neutral-800">
               Quick Check-in
@@ -193,7 +194,7 @@ function CheckinContent() {
         {didMinimum !== null && (
           <div className="glass-strong rounded-2xl p-6 space-y-4 animate-fade-in-up">
             <label className="block text-sm font-medium text-neutral-700">
-              Tell us more about what you did
+              Tell us more about what you did <span className="text-neutral-400 font-normal">(optional)</span>
             </label>
             <textarea
               value={progressNote}
@@ -203,7 +204,6 @@ function CheckinContent() {
                 : "e.g., Got busy with work but did 2 min of stretching..."}
               maxLength={INPUT_LIMITS.ACTUAL_MAX_LENGTH}
               className="w-full h-24 bg-white/50 border border-white/60 rounded-xl p-3 text-neutral-800 placeholder:text-neutral-400 focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-              required
             />
             <p className="text-xs text-neutral-400">
               📝 This helps track your progress over 90 days and builds your habit story.
@@ -243,7 +243,7 @@ function CheckinContent() {
               onClick={handleSubmit}
               size="lg" 
               className="w-full"
-              disabled={loading || !progressNote.trim()}
+              disabled={loading}
             >
               {loading ? (
                 <span className="flex items-center gap-2">

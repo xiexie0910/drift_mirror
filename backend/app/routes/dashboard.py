@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -9,6 +11,8 @@ from app.schemas import (
 from app.services.drift import compute_drift_score, get_weekly_frequency_stats
 from app.services.progress_summary import generate_progress_summary
 from typing import Tuple, Optional
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

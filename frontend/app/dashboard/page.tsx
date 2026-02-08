@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Plus, Target, Trash2, Calendar, ChevronRight, Play } from 'lucide-react';
 import { api, Resolution, ApiError } from '@/lib/api';
@@ -97,11 +98,12 @@ export default function DashboardPage() {
         {goals.length > 0 ? (
           <div className="space-y-4">
             {goals.map((goal, index) => (
-              <div
+              <Link
                 key={goal.id}
-                onClick={() => router.push(`/dashboard/${goal.id}`)}
-                className="glass-strong rounded-2xl p-5 cursor-pointer transition-all hover:scale-[1.02] hover:glow-teal animate-fade-in-up group"
+                href={`/dashboard/${goal.id}`}
+                className="block glass-strong rounded-2xl p-5 cursor-pointer transition-all hover:scale-[1.02] hover:glow-teal animate-fade-in-up group"
                 style={{ animationDelay: `${index * 0.05}s` }}
+                prefetch={true}
               >
                 <div className="flex items-start gap-4">
                   {/* Icon */}
@@ -146,7 +148,7 @@ export default function DashboardPage() {
                     <ChevronRight className="w-5 h-5 text-neutral-300 group-hover:text-teal-500 transition-colors" />
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (
@@ -162,10 +164,12 @@ export default function DashboardPage() {
               Create your first goal to start tracking your progress.
             </p>
             <div className="flex flex-col gap-3 items-center">
-              <Button onClick={() => router.push('/onboarding')} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Create First Goal
-              </Button>
+              <Link href="/onboarding">
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create First Goal
+                </Button>
+              </Link>
               <button
                 onClick={async () => {
                   setIsDemoLoading(true);
@@ -201,14 +205,15 @@ export default function DashboardPage() {
       {goals.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-white/20">
           <div className="max-w-lg mx-auto flex gap-3">
-            <Button 
-              onClick={() => router.push('/onboarding')} 
-              size="lg" 
-              className="flex-1 gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              New Goal
-            </Button>
+            <Link href="/onboarding" className="flex-1">
+              <Button 
+                size="lg" 
+                className="w-full gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                New Goal
+              </Button>
+            </Link>
             <button
               onClick={async () => {
                 setIsDemoLoading(true);

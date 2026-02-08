@@ -4,11 +4,14 @@ Goal Assessment Service - Agent A
 Full-payload assessment of questionnaire data.
 Classifies goal type, calculates clarity signals, and determines next steps.
 """
+import logging
 from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 from app.services.llm_client import call_llm, extract_json_from_response
+
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # Spell Check (using pyspellchecker library)
@@ -111,7 +114,7 @@ class MinimumActionInput(BaseModel):
 class QuestionnairePayload(BaseModel):
     """Full questionnaire data submitted in one batch."""
     goal: str = Field(..., min_length=1, max_length=500)
-    why: str = Field(..., min_length=1, max_length=500)
+    why: str = Field(default="", max_length=500)
     boundaries: BoundariesInput = Field(default_factory=BoundariesInput)
     minimum_action: Optional[MinimumActionInput] = None  # Optional field
 
@@ -421,30 +424,28 @@ async def assess_questionnaire(
                 # Silent fail - will retry
                 continue
     
-    raise RuntimeError("Goal assessment failed to produce a valid Gemini response")
-
-# ============================================================
-# Keep legacy function for backward compatibility during transition
-# ============================================================
-
-from app.services.reality_check import (
-    RealityCheckRequest, 
-    RealityCheckResponse, 
-    run_reality_check
-)
+    # Deterministic fallback — let user proceed with "ok" so demo doesn't break
+    logger.warning("Goal assessment LLM failed after retries; returning ok fallback")
+    return AssessmentResponse(
+        status="ok",
+        goal_type=GoalType.OTHER,
+        signals=ClaritySignals(clarity=0.7, scope=0.7, actionability=0.7, boundaries=0.5, minimum_action=0.5),
+        flags=AssessmentFlags(),
+        issues=[],
+        rewrite_options=[],
+        suggest_show_rewrite_options=False,
+        best_guess_goal=corrected_goal if goal_was_corrected else None,
+        confidence=0.5,
+        debug={"model_used": "fallback", "fallback_used": True, "spell_corrected": goal_was_corrected or why_was_corrected},
+    )
 
 __all__ = [
-    # New full-payload API
     "QuestionnairePayload",
-    "AssessmentRequest", 
+    "AssessmentRequest",
     "AssessmentResponse",
     "ClaritySignals",
     "AssessmentFlags",
     "GoalType",
     "RewriteOption",
     "assess_questionnaire",
-    # Legacy API (for backward compatibility)
-    "RealityCheckRequest",
-    "RealityCheckResponse",
-    "run_reality_check",
 ]

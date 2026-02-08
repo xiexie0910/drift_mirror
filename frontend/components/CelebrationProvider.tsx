@@ -32,7 +32,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Generate confetti pieces with varied properties
-  const confettiPieces = Array.from({ length: 300 }).map((_, i) => ({
+  const confettiPieces = Array.from({ length: 60 }).map((_, i) => ({
     id: i,
     left: Math.random() * 100,
     delay: Math.random() * 0.5,
@@ -138,7 +138,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
           ))}
           
           {/* Streamers / ribbons */}
-          {Array.from({ length: 25 }).map((_, i) => (
+          {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={`ribbon-${i}`}
               className="absolute"

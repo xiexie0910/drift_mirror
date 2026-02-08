@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { MochiMascot } from '@/components/MochiMascot';
 import { CelebrationProvider } from '@/components/CelebrationProvider';
+import { LazyMochiMascot } from '@/components/LazyMochiMascot';
 
 /**
  * DriftMirror Root Layout
@@ -116,7 +116,7 @@ export default function RootLayout({
         </div>
         
         {/* Mochi Mascot - friendly companion */}
-        <MochiMascot />
+        <LazyMochiMascot />
         </CelebrationProvider>
       </body>
     </html>

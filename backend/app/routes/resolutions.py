@@ -1,8 +1,12 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Resolution, Plan, Checkin, Signal, MirrorReport, InsightAction, Feedback, DiaryEntry, QuarterlyReview
 from app.schemas import ResolutionCreate, ResolutionResponse, PlanResponse, InsightActionCreate, InsightActionResponse, MinimumActionUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

@@ -230,8 +230,20 @@ async def seed_demo(db: Session = Depends(get_db)):
     - Signals for each check-in
     - 1 mirror report with actionable suggestions
     
-    Returns the resolution ID for immediate redirect.
+    Idempotent: if a demo resolution already exists, returns its ID
+    without creating duplicates.
     """
+    # Guard against duplicate demo data
+    existing = db.query(Resolution).filter(
+        Resolution.title == "Meditate daily for mental clarity"
+    ).first()
+    if existing:
+        return {
+            "status": "demo_already_exists",
+            "resolution_id": existing.id,
+            "message": "Demo data already seeded. Returning existing resolution.",
+        }
+
     now = datetime.now(timezone.utc)
     res_data, plan_data, checkins_data, mirror_data = _build_demo_data()
     

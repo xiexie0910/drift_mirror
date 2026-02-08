@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { MetricPills } from '@/components/MetricPills';
 import { Timeline } from '@/components/Timeline';
@@ -175,13 +176,13 @@ const handleSaveMinAction = async () => {
         
         {/* Back Navigation */}
         <nav className="animate-fade-in-up">
-          <button
-            onClick={() => router.push('/dashboard')}
+          <Link
+            href="/dashboard"
             className="flex items-center gap-2 text-neutral-500 hover:text-teal-600 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">All Goals</span>
-          </button>
+          </Link>
         </nav>
 
         {/* Goal Header - Clear statement */}
@@ -399,14 +400,15 @@ const handleSaveMinAction = async () => {
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => router.push(`/mirror?goal=${goalId}`)}
-                variant="glass"
-                size="sm"
-                className="shrink-0 gap-1"
-              >
-                Details <ArrowRight className="w-3 h-3" />
-              </Button>
+              <Link href={`/mirror?goal=${goalId}`}>
+                <Button
+                  variant="glass"
+                  size="sm"
+                  className="shrink-0 gap-1"
+                >
+                  Details <ArrowRight className="w-3 h-3" />
+                </Button>
+              </Link>
             </div>
             {/* Show strength pattern if available */}
             {latest_mirror.strength_pattern && (
@@ -435,14 +437,15 @@ const handleSaveMinAction = async () => {
               />
             ))}
             {latest_mirror.actionable_suggestions.length > 2 && (
-              <Button
-                onClick={() => router.push(`/mirror?goal=${goalId}`)}
-                variant="glass"
-                className="w-full gap-2"
-              >
-                View all {latest_mirror.actionable_suggestions.length} suggestions
-                <ArrowRight className="w-4 h-4" />
-              </Button>
+              <Link href={`/mirror?goal=${goalId}`}>
+                <Button
+                  variant="glass"
+                  className="w-full gap-2"
+                >
+                  View all {latest_mirror.actionable_suggestions.length} suggestions
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
             )}
           </div>
         )}
@@ -547,22 +550,24 @@ const handleSaveMinAction = async () => {
       {/* Fixed bottom action */}
       <div className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-white/20">
         <div className="max-w-lg mx-auto">
-          <Button 
-            onClick={() => router.push(`/checkin?goal=${goalId}`)} 
-            size="lg" 
-            className="w-full gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Record Check-in
-          </Button>
+          <Link href={`/checkin?goal=${goalId}`} prefetch={true}>
+            <Button 
+              size="lg" 
+              className="w-full gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Record Check-in
+            </Button>
+          </Link>
           
           {latest_mirror && !drift_triggered && (
-            <button
-              onClick={() => router.push(`/mirror?goal=${goalId}`)}
-              className="w-full mt-3 py-2 text-sm text-neutral-500 hover:text-teal-600 transition-colors"
+            <Link
+              href={`/mirror?goal=${goalId}`}
+              className="block w-full mt-3 py-2 text-sm text-neutral-500 hover:text-teal-600 transition-colors text-center"
+              prefetch={true}
             >
               View latest analysis
-            </button>
+            </Link>
           )}
         </div>
       </div>

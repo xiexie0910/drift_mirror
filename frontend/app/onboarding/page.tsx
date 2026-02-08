@@ -344,13 +344,10 @@ export default function OnboardingPage() {
     setPhase('creating');
     setError(null);
 
-    // Get accountability text
-    const accountabilityText = form.selectedAccountability?.text || form.customAccountability.trim() || null;
-
     try {
       await api.createResolution({
         title: sanitizeText(form.goal),
-        why: sanitizeText(form.why) || null,
+        why: sanitizeText(form.why) || undefined,
         mode: 'personal_growth',
         frequency_per_week: form.frequencyPerWeek,
         min_minutes: form.selectedMinimumAction.minutes,

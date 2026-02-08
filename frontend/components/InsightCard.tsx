@@ -12,11 +12,18 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Check, X, AlertCircle, Lightbulb } from 'lucide-react';
 
+/** Possible plan changes an insight can suggest. */
+interface SuggestedChanges {
+  min_minutes?: number;
+  frequency_per_week?: number;
+  time_window?: string;
+}
+
 interface InsightCardProps {
   suggestion: {
     type: string;
     suggestion: string;
-    changes: Record<string, any>;
+    changes: SuggestedChanges;
     reason: string;
   };
   resolutionId: number;
@@ -31,7 +38,7 @@ export function InsightCard({
   onActionComplete 
 }: InsightCardProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [editableChanges, setEditableChanges] = useState<Record<string, any>>(suggestion.changes || {});
+  const [editableChanges, setEditableChanges] = useState<SuggestedChanges>(suggestion.changes || {});
   const [isEditingChanges, setIsEditingChanges] = useState(false);
 
   const handleAction = async (action: 'accept' | 'constrain' | 'ignore') => {

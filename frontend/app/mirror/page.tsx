@@ -10,6 +10,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { InsightCard } from '@/components/InsightCard';
 import { ChevronDown, ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Eye, Loader2 } from 'lucide-react';
@@ -35,9 +36,7 @@ function MirrorContent() {
       .catch(() => router.push('/dashboard'));
   }, [router, goalId]);
 
-  const goBack = () => {
-    router.push(goalId ? `/dashboard/${goalId}` : '/dashboard');
-  };
+  const backHref = goalId ? `/dashboard/${goalId}` : '/dashboard';
 
   const handleFeedback = async (helpful: boolean) => {
     if (!dashboard?.latest_mirror) return;
@@ -63,13 +62,13 @@ function MirrorContent() {
       <div className="min-h-screen">
         <div className="max-w-lg mx-auto px-4 py-8 space-y-8 animate-fade-in-up">
           <header className="flex items-center gap-4">
-            <button
-              onClick={goBack}
+            <Link
+              href={backHref}
               className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
               aria-label="Back to goal"
             >
               <ArrowLeft className="w-5 h-5" />
-            </button>
+            </Link>
             <div className="flex items-center gap-3">
               <div className="glass-subtle p-2.5 rounded-xl glow-teal">
                 <Eye className="w-5 h-5 text-teal-600" />
@@ -91,13 +90,14 @@ function MirrorContent() {
               Continue logging check-ins. The system will generate insights 
               once it observes patterns.
             </p>
-            <Button 
-              onClick={goBack} 
-              variant="glass"
-              className="mt-8"
-            >
-              Back to Goal
-            </Button>
+            <Link href={backHref}>
+              <Button 
+                variant="glass"
+                className="mt-8"
+              >
+                Back to Goal
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -136,13 +136,13 @@ function MirrorContent() {
         
         {/* Header */}
         <header className="flex items-center gap-4 animate-fade-in-up">
-          <button
-            onClick={goBack}
+          <Link
+            href={backHref}
             className="p-3 glass-subtle rounded-xl text-neutral-500 hover:text-teal-600 transition-all hover:-translate-y-0.5"
             aria-label="Back to goal"
           >
             <ArrowLeft className="w-5 h-5" />
-          </button>
+          </Link>
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <div className="glass-subtle p-2.5 rounded-xl glow-teal">
@@ -285,7 +285,7 @@ function MirrorContent() {
                   // Reload dashboard to reflect changes
                   const loadDashboard = goalId 
                     ? api.getDashboardForResolution(Number(goalId))
-                    : api.getDashboard();
+                    : api.getLatestDashboard();
                   loadDashboard.then(setDashboard);
                 }}
               />
@@ -344,13 +344,14 @@ function MirrorContent() {
         </div>
 
         {/* Back action */}
-        <Button
-          onClick={goBack}
-          variant="secondary"
-          className="w-full"
-        >
-          Back to Goal
-        </Button>
+        <Link href={backHref}>
+          <Button
+            variant="secondary"
+            className="w-full"
+          >
+            Back to Goal
+          </Button>
+        </Link>
       </div>
     </div>
   );

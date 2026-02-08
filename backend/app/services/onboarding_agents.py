@@ -1,10 +1,14 @@
 """
 Onboarding Agents - Generate minimum actions and accountability suggestions.
 """
+import logging
 from typing import List
 from pydantic import BaseModel, Field
 
 from app.services.llm_client import call_llm, extract_json_from_response
+
+logger = logging.getLogger(__name__)
+
 from app.services.prompts import (
     MINIMUM_ACTION_GENERATOR_SYSTEM,
     MINIMUM_ACTION_GENERATOR_PROMPT,
@@ -51,23 +55,28 @@ async def generate_minimum_actions(
         frequency=frequency
     )
     
-    response = await call_llm(prompt, MINIMUM_ACTION_GENERATOR_SYSTEM)
-    parsed = extract_json_from_response(response)
-    
-    if not parsed or "minimum_actions" not in parsed:
-        raise RuntimeError("Gemini failed to generate minimum actions")
-    
     try:
-        actions = []
-        for action in parsed["minimum_actions"][:6]:
-            actions.append(MinimumActionOption(
-                text=action.get("text", ""),
-                minutes=action.get("minutes", 5),
-                rationale=action.get("rationale", "")
-            ))
-        return MinimumActionsResponse(minimum_actions=actions)
+        response = await call_llm(prompt, MINIMUM_ACTION_GENERATOR_SYSTEM)
+        parsed = extract_json_from_response(response)
+        
+        if parsed and "minimum_actions" in parsed:
+            actions = []
+            for action in parsed["minimum_actions"][:6]:
+                actions.append(MinimumActionOption(
+                    text=action.get("text", ""),
+                    minutes=action.get("minutes", 5),
+                    rationale=action.get("rationale", "")
+                ))
+            return MinimumActionsResponse(minimum_actions=actions)
     except Exception as e:
-        raise RuntimeError("Gemini returned invalid minimum actions") from e
+        logger.warning(f"LLM minimum-action generation failed, using fallback: {e}")
+
+    # Deterministic fallback when LLM is unavailable
+    return MinimumActionsResponse(minimum_actions=[
+        MinimumActionOption(text=f"Spend 2 minutes preparing for your goal", minutes=2, rationale="Lowering the bar makes starting effortless."),
+        MinimumActionOption(text=f"Open your materials and review for 5 minutes", minutes=5, rationale="Momentum builds once you begin."),
+        MinimumActionOption(text=f"Do the smallest possible step toward your goal", minutes=3, rationale="Consistency beats intensity."),
+    ])
 
 
 async def generate_accountability_suggestions(
@@ -86,20 +95,24 @@ async def generate_accountability_suggestions(
         boundaries=boundaries_str
     )
     
-    response = await call_llm(prompt, ACCOUNTABILITY_SUGGESTIONS_SYSTEM)
-    parsed = extract_json_from_response(response)
-    
-    if not parsed or "suggestions" not in parsed:
-        raise RuntimeError("Gemini failed to generate accountability suggestions")
-    
     try:
-        suggestions = []
-        for suggestion in parsed["suggestions"][:5]:
-            suggestions.append(AccountabilitySuggestion(
-                text=suggestion.get("text", ""),
-                type=suggestion.get("type", "social"),
-                rationale=suggestion.get("rationale", "")
-            ))
-        return AccountabilitySuggestionsResponse(suggestions=suggestions)
+        response = await call_llm(prompt, ACCOUNTABILITY_SUGGESTIONS_SYSTEM)
+        parsed = extract_json_from_response(response)
+        
+        if parsed and "suggestions" in parsed:
+            suggestions = []
+            for suggestion in parsed["suggestions"][:5]:
+                suggestions.append(AccountabilitySuggestion(
+                    text=suggestion.get("text", ""),
+                    type=suggestion.get("type", "social"),
+                    rationale=suggestion.get("rationale", "")
+                ))
+            return AccountabilitySuggestionsResponse(suggestions=suggestions)
     except Exception as e:
-        raise RuntimeError("Gemini returned invalid accountability suggestions") from e
+        logger.warning(f"LLM accountability generation failed, using fallback: {e}")
+
+    # Deterministic fallback when LLM is unavailable
+    return AccountabilitySuggestionsResponse(suggestions=[
+        AccountabilitySuggestion(text="Check in with a friend weekly", type="social", rationale="External accountability improves follow-through."),
+        AccountabilitySuggestion(text="Set a daily phone reminder", type="self", rationale="Simple cues reduce decision fatigue."),
+    ])

@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowRight, Sparkles, Play } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -99,8 +100,8 @@ export default function Home() {
           <div className="h-px bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
           
           {/* Primary CTA */}
-          <button 
-            onClick={() => router.push('/onboarding')} 
+          <Link 
+            href="/onboarding"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className="w-full btn-primary py-4 px-6 rounded-xl font-medium text-base flex items-center justify-center gap-3 group relative overflow-hidden"
@@ -111,7 +112,7 @@ export default function Home() {
             <ArrowRight 
               className={`w-5 h-5 relative z-10 transition-transform duration-300 ${isHovered ? 'translate-x-1' : ''}`} 
             />
-          </button>
+          </Link>
           
           {/* Demo CTA */}
           <button 
